@@ -1,0 +1,5274 @@
+!MEMORY.PAS
+#{$O+,F+,X+,I-,S-,Q-}
+>{$I-,S-,Q-}
+#  MaxHeapSize: Word = 655360 div 16;    { 640K }
+#  MaxBufMem: Word = 65536 div 16;       {  64K }
+>  MaxHeapSize: LongWord = (8192*1024) DIV 16;  {  8 MB }
+>  LowMemSize: LongWord = 4096 DIV 16;          {  4 KB }
+>  MaxBufMem: Word = 65536 DIV 16;              {  64 K }
+#function MemAllocSeg(Size: Word): Pointer;
+>
+#{$IFNDEF DPMI}
+#{$ENDIF}
+>
+#  PtrRec = record
+#  end;
+>  PtrRec = record
+>    Ofs: LongWord;
+>  end;
+#{$IFDEF DPMI}
+>
+#    Data: record end;
+>    Data: record end;
+>    BufSize:WORD;
+#  CacheList: PCache = nil;
+>  CacheList:  PCache = nil;
+>  BufferList: PCache = nil;
+#function MemAllocateBlock(HeapHandle, Size, Attributes: Word;
+#external 'RTM' index $0014;
+>
+#function MemAllocSeg(Size: Word): Pointer;
+#end;
+>
+#  PtrRec(Cache).Ofs := 0;
+#    PtrRec(Cache).Seg := 0;
+>  Cache:=NIL;
+>  IF MaxAvail>=Size THEN GetMem(Cache,Size);
+#    Cache^.Master := @P;
+>    Cache^.Master := @P;
+>    Cache^.BufSize:= Size;
+#  PtrRec(Cache).Seg := PtrRec(P).Seg;
+>
+#    MemFreeBlock(PtrRec(Cache).Seg);
+>    FreeMem(Cache,Cache^.BufSize);
+#procedure NewBuffer(var P: Pointer; Size: Word);
+#end;
+>procedure NewBuffer(var P: Pointer; Size: Word);
+>begin
+>     P:=MemAlloc(Size+Sizeof(TCache));
+>     IF P<>NIL THEN
+>     BEGIN
+>          PCache(P)^.Next:=BufferList;
+>          BufferList:=P;
+>          BufferList^.BufSize:=Size;
+>          BufferList^.Master:=@P;
+>          inc(P,SizeOf(TCache));
+>     END;
+>end;
+#procedure DisposeBuffer(P: Pointer);
+#end;
+>procedure DisposeBuffer(P: Pointer);
+>VAR dummy,dummy1:PCache;
+>LABEL l;
+>begin
+>     IF P=NIL THEN exit;
+>     dec(P,SizeOf(TCache));
+>     dummy1:=NIL;
+>     dummy:=BufferList;
+>     WHILE dummy<>NIL DO
+>     BEGIN
+>          IF dummy=P THEN goto l;
+>          dummy1:=dummy;
+>          dummy:=dummy^.Next;
+>     END;
+>     exit;  {no match found}
+>l:
+>     IF dummy1=NIL THEN BufferList:=dummy^.Next
+>     ELSE dummy1^.Next:=dummy^.Next;
+>     FreeMem(P,dummy^.BufSize);
+>end;
+#function GetBufferSize(P: Pointer): Word;
+#end;
+>function GetBufferSize(P: Pointer): Word;
+>begin
+>     IF P<>NIL THEN
+>     BEGIN
+>          dec(P,SizeOf(TCache));
+>          GetBufferSize:=PCache(P)^.BufSize;
+>     END
+>     ELSE GetBufferSize:=0;
+>end;
+#function SetBufferSize(P: Pointer; Size: Word): Boolean;
+#end;
+>function SetBufferSize(P: Pointer; Size: Word): Boolean;
+>begin
+>    SetBufferSize:=FALSE;  {not supported yet}
+>end;
+#{$ELSE}
+#end.
+>end.
+!OBJECTS.PAS
+#{$O+,F+,X+,I-,S-}
+>{$I-,S-}
+#interface
+>interface
+>
+>
+>uses Os2Def,BseDos,Memory,Strings;
+#  PtrRec = record
+#  end;
+>  PtrRec = record
+>    Ofs: LongWord;
+>  end;
+#{ String pointers }
+#  PString = ^String;
+>
+#  TWordArray = array[0..16383] of Word;
+>  TWordArray = array[0..16383] of Word;
+>  PPtrArray = ^TPtrArray;
+>  TPtrArray = array[0..8192] of Pointer;
+#  PObject = ^TObject;
+#  end;
+>  TObject = object
+>    constructor Init;
+>    procedure Free;
+>    destructor Done; virtual;
+>  end;
+>  PObject = ^TObject;
+#{ TStreamRec }
+#  end;
+>{ TStreamRec }
+>  PStreamRec = ^TStreamRec;
+>  TStreamRec = record
+>    ObjType: Word;
+>    VmtLink: Pointer;
+>    Load: Pointer;
+>    Store: Pointer;
+>    Next: PStreamRec;
+>  end;
+#{$IFDEF Windows}
+#{$ENDIF}
+>  FNameStr = string;
+#    Handle: Word;
+>    Handle: LongWord;
+#{ TEmsStream }
+#{ TCollection types }
+>
+>{MemoryStream not supported yet}
+>
+>{ TCollection types }
+#{$IFNDEF Windows}
+>
+#{$ENDIF}
+>
+#{ Longint routines }
+#inline($59/$58/$5A/$F7/$F9);
+>
+#{ EMS stream state variables }
+#  EmsCurPage: Word = $FFFF;
+>
+#{ Stream registration records }
+#{$ENDIF}
+>{ Stream registration records }
+>
+>var
+>  RCollection: TStreamRec;
+>  RStringCollection: TStreamRec;
+>  RStrCollection: TStreamRec;
+>  RStringList: TStreamRec;
+>  RStrListMaker: TStreamRec;
+#{$IFDEF Windows}
+#{$ENDIF}
+>
+#{$IFDEF Windows}
+#{$ENDIF}
+>
+#{$IFDEF DPMI}
+#{$ENDIF}
+>
+#constructor TObject.Init;
+#end;
+>constructor TObject.Init;
+>type
+>  Image = record
+>    DmtPtr: POINTER;
+>    InfoPtr: POINTER;
+>    DataSize: LONGWORD;
+>  end;
+>  DataImage=record
+>    VmtPtr:^Image;
+>    Data:Record end;
+>  end;
+>var p:^Image;
+>    s:^DataImage;
+>begin
+>  s:=@Self;
+>  p:=s^.VmtPtr;
+>  FillChar(s^.Data, p^.DataSize-4,0);
+>end;
+#  Dispose(PObject(@Self), Done);
+>  Dispose(PObject(@Self), Done);
+#  StreamTypes: Word = 0;
+>  StreamTypes: PStreamRec = NIL;
+#procedure RegisterType(var S: TStreamRec); assembler;
+#end;
+>procedure RegisterType(var S: TStreamRec);
+>var
+>  dummy: PStreamRec;
+>begin
+>  if S.ObjType=0 then RegisterError;
+>  dummy := StreamTypes;
+>  while dummy<>NIL do
+>  begin
+>       if dummy^.ObjType=S.ObjType then RegisterError;
+>       dummy:=dummy^.Next;
+>  end;
+>  S.Next:=StreamTypes;
+>  StreamTypes:=@S;
+>end;
+#{ Stream error handler                                  }
+#end;
+>
+#function TStream.Get: PObject; assembler;
+#end;
+>function TStream.Get: PObject;
+>var typ:Integer;
+>    dummy:PStreamRec;
+>    result:PObject;
+>    Vmt:Pointer;
+>    LoadAddr:Pointer;
+>label l;
+>begin
+>     Read(typ,2);
+>     if typ=0 then
+>     begin
+>          Get:=NIL;
+>          exit;
+>     end;
+>     dummy:=StreamTypes;
+>     while dummy<>NIL do
+>     begin
+>          if dummy^.ObjType=typ then goto l;
+>          dummy:=dummy^.Next;
+>     end;
+>     //No match found
+>     Error(stGetError,typ);
+>     Get:=NIL;
+>     exit;
+>l:
+>     Vmt:=dummy^.VmtLink;
+>     LoadAddr:=dummy^.Load;
+>     {Initialize Object with load constructor=dummy^.Load
+>     and VMT table=dummy^.VmtLink and TStream=SELF}
+>     asm
+>        lea edi,result
+>        push edi
+>        mov esi,Vmt
+>        push dword ptr [esi+8]  //object size
+>        calln32 system.savegetmem
+>        mov esi,[edi]
+>        push dword ptr vmt
+>        popd [esi+4]
+>        movd [esi],0
+>        push dword ptr self   //Stream param
+>        push esi      //self
+>        lea eax,LoadAddr
+>        calln32 [eax]
+>     end;
+>
+>     Get:=Result;
+>end;
+#procedure TStream.Put(P: PObject); assembler;
+#end;
+>procedure TStream.Put(P: PObject);
+>var dummy:PStreamRec;
+>    typ:Integer;
+>    VmtLink:POINTER;
+>    StoreAddr:POINTER;
+>label l;
+>begin
+>     if P=NIL then
+>     begin
+>          typ:=0;
+>          Write(typ,2);
+>          exit;
+>     end;
+>     VmtLink:=POINTER(P)^;
+>     VmtLink:=VmtLink^;
+>     dummy:=StreamTypes;
+>     while dummy<>NIL do
+>     begin
+>          if dummy^.VmtLink=VmtLink then goto l;
+>          dummy:=dummy^.Next;
+>     end;
+>     //No match found
+>     Error(stPutError,typ);
+>     exit;
+>l:
+>     typ:=dummy^.ObjType;
+>     Write(typ,2);
+>     StoreAddr:=dummy^.Store;
+>     {Write Object with save method=dummy^.Store and TStream=SELF}
+>     asm
+>        push dword ptr self        //TStream Param
+>        mov eax,p
+>        push dword ptr [eax]        //SELF
+>        lea eax,StoreAddr
+>        calln32 [eax]
+>     end;
+>end;
+#constructor TDosStream.Init(FileName: FNameStr; Mode: Word); assembler;
+#end;
+>constructor TDosStream.Init(FileName: FNameStr; Mode: Word);
+>var SaveFileMode:LONGWORD;
+>    Result,Action:LongWord;
+>    c:CSTRING;
+>begin
+>     Inherited Init;
+>     c:=FileName;
+>     Result:=1; {Error}
+>     case Mode of
+>       stCreate:  //create new file
+>       begin
+>            Result:=DosOpen(c,Handle,action,0,$20,18,fmInOut,NIL);
+>       end;
+>       stOpenRead: //open file for read
+>       begin
+>            Result:=DosOpen(c,Handle,action,0,0,1,fmInput,NIL);
+>       end;
+>       stOpenWrite: //open file for write
+>       begin
+>            Result:=DosOpen(c,Handle,action,0,0,1,fmOutput,NIL);
+>       end;
+>       stOpen: //open file for read/write
+>       begin
+>            Result:=DosOpen(c,Handle,action,0,0,1,fmInOut,NIL);
+>       end;
+>     end; {case}
+>
+>     if result<>0 then
+>     begin
+>          Error(stInitError,result);
+>          Status:=stInitError;
+>          Handle:=-1;
+>     end
+>     else Status:=stOk;
+>end;
+#destructor TDosStream.Done; assembler;
+#end;
+>destructor TDosStream.Done;
+>begin
+>     DosClose(Handle);
+>     Inherited Done;
+>end;
+#function TDosStream.GetPos: Longint; assembler;
+#end;
+>function TDosStream.GetPos: Longint;
+>var result:longword;
+>begin
+>     if Status<>stOk then
+>     begin
+>          GetPos:=-1;
+>          exit;
+>     end;
+>     if DosSetFilePtr(Handle,0,1,result)<>0 then
+>     begin
+>          Error(stError,1);
+>          Status:=stError;
+>          result:=-1;
+>     end;
+>
+>     GetPos:=result;
+>end;
+#function TDosStream.GetSize: Longint; assembler;
+#end;
+>function TDosStream.GetSize: Longint;
+>var result:LongWord;
+>    OldPos:LongInt;
+>begin
+>     if Status<>stOk then
+>     begin
+>          GetSize:=-1;
+>          exit;
+>     end;
+>     OldPos:=GetPos;
+>     if OldPos<0 then
+>     begin
+>          GetSize:=-1;
+>          exit;
+>     end;
+>     if DosSetFilePtr(Handle,0,2,result)<>0 then
+>     begin
+>          Status:=stError;
+>          Error(stError,1);
+>          result:=-1;
+>     end;
+>     Seek(OldPos);
+>     GetSize:=result;
+>end;
+#procedure TDosStream.Read(var Buf; Count: Word); assembler;
+#end;
+>procedure TDosStream.Read(var Buf; Count: Word);
+>var result,actual:LongWord;
+>begin
+>     if Status<>stOk then
+>     begin
+>          fillchar(Buf,Count,0);
+>          exit;
+>     end;
+>     result:=DosRead(Handle,Buf,Count,actual);
+>     if ((result<>0)OR(actual<>Count)) then
+>     begin
+>          if result<>0 then Status:=stError
+>          else Status:=stReadError;
+>          Error(Status,result);
+>     end;
+>end;
+#procedure TDosStream.Seek(Pos: Longint); assembler;
+#end;
+>procedure TDosStream.Seek(Pos: Longint);
+>var result:LongWord;
+>begin
+>     if Status<>stOk then exit;
+>     if DosSetFilePtr(Handle,Pos,0,result)<>0 then
+>     begin
+>          Status:=stError;
+>          Error(stError,1);
+>     end;
+>end;
+#procedure TDosStream.Truncate; assembler;
+#end;
+>procedure TDosStream.Truncate;
+>begin
+>     if Status<>stOk then exit;
+>     if DosSetFileSize(Handle,GetPos)<>0 then
+>     begin
+>          Status:=stError;
+>          Error(stError,1);
+>     end;
+>end;
+#procedure TDosStream.Write(var Buf; Count: Word); assembler;
+#end;
+>procedure TDosStream.Write(var Buf; Count: Word);
+>var actual,Result:LongWord;
+>begin
+>     if Status<>stOk then exit;
+>     Result:=DosWrite(Handle,Buf,Count,Actual);
+>     if ((Result<>0)OR(Count<>Actual)) then
+>     begin
+>          if Result<>0 then Status:=stError
+>          else Status:=stWriteError;
+>          Error(Status,Result);
+>     end;
+>end;
+#{ In    AL    = Flush mode (0=Read, 1=Write, 2=Both)    }
+#{ Out   ZF    = Status test                             }
+>
+#procedure FlushBuffer; near; assembler;
+#end;
+>function FlushBuffer(Mode:BYTE;Stream:TBufStream):boolean;
+>var result,Actual:LongWord;
+>label l;
+>begin
+>     if Stream.BufPtr=Stream.BufEnd then
+>     begin
+>l:
+>          Stream.BufPtr:=0;
+>          Stream.BufEnd:=0;
+>          FlushBuffer:=Stream.Status=stOk;
+>          exit;
+>     end;
+>     if Stream.BufPtr<Stream.BufEnd then
+>     begin
+>          if mode=1 then exit; //if write
+>          //Seek from current pos
+>          if DosSetFilePtr(Stream.Handle,Stream.Bufptr-Stream.BufEnd,
+>                           1,result)<>0 then Stream.Status:=stError
+>          else Stream.Status:=stOk;
+>          goto l;
+>     end;
+>     if mode=0 then exit; //if read
+>     Result:=DosWrite(Stream.Handle,Stream.Buffer^,
+>                      Stream.BufPtr-Stream.BufEnd,Actual);
+>     if ((Result<>0)OR(Stream.BufPtr-Stream.BufEnd<>Actual)) then
+>     begin
+>          if Result<>0 then Stream.Status:=stError
+>          else Stream.Status:=stWriteError;
+>          Stream.Error(Stream.Status,Result);
+>     end;
+>     goto l;
+>end;
+#procedure TBufStream.Flush; assembler;
+#end;
+>procedure TBufStream.Flush;
+>begin
+>     if Status<>stOk then exit;
+>     FlushBuffer(2,SELF);
+>end;
+#function TBufStream.GetPos: Longint; assembler;
+#end;
+>function TBufStream.GetPos: Longint;
+>var result:LongInt;
+>begin
+>     result:=TDosStream.GetPos;
+>     if result<0 then
+>     begin
+>          GetPos:=-1;
+>          exit;
+>     end;
+>     GetPos:=(result-BufEnd)+BufPtr;
+>end;
+#function TBufStream.GetSize: Longint; assembler;
+#end;
+>function TBufStream.GetSize: Longint;
+>begin
+>     Flush;
+>     GetSize:=TDosStream.GetSize;
+>end;
+#procedure TBufStream.Read(var Buf; Count: Word); assembler;
+#end;
+>procedure DoStreamError(Stream:TStream;Code:LongInt);
+>begin
+>     Stream.Error(Code,1);
+>end;
+>
+>procedure TBufStream.Read(var Buf; Count: Word);
+>var actual:LongWord;
+>label l;
+>begin
+>     if Status<>stOk then
+>     begin
+>l:
+>          fillchar(Buf,Count,0);
+>          exit;
+>     end;
+>     if not FlushBuffer(1,SELF) then goto l;
+>
+>     asm
+>        XOR     EBX,EBX
+>!read1:
+>        MOV     CX,Count
+>        SUB     CX,BX
+>        JE      !read7     //Nothing more to do
+>
+>        MOV     EDI,Self
+>        MOV     AX,[EDI].TBufStream.BufEnd
+>        SUB     AX,[EDI].TBufStream.BufPtr
+>        JA      !read2
+>
+>        PUSH    CX
+>        PUSH    BX
+>
+>        MOV     CX,[EDI].TBufStream.BufSize
+>        LEA     EAX,Actual
+>        PUSH    EAX                             //Actual
+>        MOVZX   ECX,CX
+>        PUSH    ECX                             //BufSize
+>        PUSH DWORD PTR   [EDI].TBufStream.Buffer
+>        PUSH DWORD PTR   [EDI].TBufStream.Handle
+>        MOV     AL,4
+>        CALLDLL DosCalls,281                    //DosRead
+>        ADD     ESP,16
+>
+>        POP     BX
+>        POP     CX
+>
+>        MOV     DX,stError
+>        CMP     EAX,0
+>        JNE     !read5
+>
+>        MOV     AX,Actual
+>        MOVW    [EDI].TBufStream.BufPtr,0
+>        MOV     [EDI].TBufStream.BufEnd,AX
+>        OR      AX,AX
+>        JE      !read4      //0 bytes written ??
+>!read2:
+>        CMP     CX,AX
+>        JB      !read3
+>        MOV     CX,AX
+>!read3:
+>        MOV     ESI,[EDI].TBufStream.Buffer
+>        MOVZXW  EAX,[EDI].TBufStream.BufPtr
+>        ADD     ESI,EAX
+>        ADD     [EDI].TBufStream.BufPtr,CX
+>        MOV     EDI,Buf
+>        MOVZX   EBX,BX
+>        MOVZX   ECX,CX
+>        ADD     EDI,EBX
+>        ADD     BX,CX
+>        CLD
+>        MOV     EDX,ECX
+>        SHR     ECX,2
+>        REP
+>        MOVSD
+>        MOV     ECX,EDX
+>        AND     ECX,3
+>        REP
+>        MOVSB
+>        JMP     !read1
+>!read4:
+>        MOV     DX,stReadError
+>!read5:
+>        PUSH DWORD PTR   SELF
+>        PUSH    EDX
+>        CALLN32 Objects.DoStreamError
+>!read6:
+>        MOV     EDI,Buf       //make buf empty
+>        MOVZXW  ECX,Count
+>        XOR     AL,AL
+>        CLD
+>        REP
+>        STOSB
+>!read7:
+>     end;
+>end;
+#procedure TBufStream.Seek(Pos: Longint); assembler;
+#end;
+>procedure TBufStream.Seek(Pos: Longint);
+>var result:Longint;
+>begin
+>     result:=TDosStream.GetPos;
+>     if result<0 then exit;
+>     if ((result=Pos)and(result<>0)) then
+>     begin
+>          if BufEnd>=result then
+>          begin
+>               BufPtr:=BufEnd-result;
+>               exit;
+>          end;
+>     end;
+>
+>     Flush;
+>     TDosStream.Seek(Pos);
+>end;
+#procedure TBufStream.Write(var Buf; Count: Word); assembler;
+#end;
+>procedure TBufStream.Write(var Buf; Count: Word);
+>var actual:LongWord;
+>begin
+>     if Status<>stOk then exit;
+>     if not FlushBuffer(0,SELF) then exit;
+>     asm
+>        XOR     EDX,EDX
+>!Write1:
+>        MOV     CX,Count
+>        SUB     CX,DX
+>        JE      !write4   //Nothing more to do
+>        MOV     EDI,Self
+>        MOV     AX,[EDI].TBufStream.BufSize
+>        SUB     AX,[EDI].TBufStream.BufPtr
+>        JA      !Write2
+>
+>        PUSH    CX
+>        PUSH    DX
+>        PUSHL   1            //Mode for FlushBuffer
+>        PUSH DWORD PTR SELF
+>        CALLN32 Objects.FlushBuffer
+>
+>        POP     DX
+>        POP     CX
+>
+>        JNE     !Write4
+>        MOV     EDI,SELF
+>        MOV     AX,[EDI].TBufStream.BufSize
+>!Write2:
+>        CMP     CX,AX
+>        JB      !Write3
+>        MOV     CX,AX
+>!Write3:
+>        MOV     AX,[EDI].TBufStream.BufPtr
+>        ADD     [EDI].TBufStream.BufPtr,CX
+>        MOV     EDI,[EDI].TBufStream.Buffer
+>        MOVZX   EAX,AX
+>        ADD     EDI,EAX
+>        MOV     ESI,Buf
+>        MOVZX   EDX,DX
+>        ADD     ESI,EDX
+>        MOVZX   ECX,CX
+>        ADD     DX,CX
+>        CLD
+>        MOV     EBX,ECX
+>        SHR     ECX,2
+>        REP
+>        MOVSD
+>        MOV     ECX,EBX
+>        AND     ECX,3
+>        REP
+>        MOVSB
+>        JMP     !Write1
+>!Write4:
+>     end;
+>end;
+#{ TEmsStream }
+#{ TCollection }
+>
+>{TMemoryStream not supported yet}
+>
+>{ TCollection }
+#procedure CollectionError; near; assembler;
+#end;
+>
+
+#function TCollection.At(Index: Integer): Pointer; assembler;
+#end;
+>function TCollection.At(Index: Integer): Pointer;
+>label l;
+>begin
+>     if Index<0 then
+>     begin
+>l:
+>          Error(coIndexError,1);
+>          At:=NIL;
+>          exit;
+>     end;
+>     if Index>=Count then goto l;
+>     At:=Items^[Index];
+>end;
+#procedure TCollection.AtDelete(Index: Integer); assembler;
+#end;
+>procedure TCollection.AtDelete(Index: Integer);
+>var Temp:LongWord;
+>label l;
+>begin
+>     if Index<0 then
+>     begin
+>l:
+>          Error(coIndexError,1);
+>          exit;
+>     end;
+>     if Index>=Count then goto l;
+>     dec(Count);
+>     Temp:=Count-Index;
+>     if Temp=0 then exit;
+>     move(Items^[Index+1],Items^[Index],Temp*4);
+>end;
+#procedure TCollection.AtInsert(Index: Integer; Item: Pointer); assembler;
+#end;
+>procedure TCollection.AtInsert(Index: Integer; Item: Pointer);
+>var OldCount:Integer;
+>label l;
+>begin
+>     OldCount:=Count;
+>     if Index<0 then
+>     begin
+>l:
+>          Error(CoIndexError,1);
+>          exit;
+>     end;
+>     if Index>Count then goto l;
+>     if Count=Limit then
+>     begin
+>          SetLimit(Count+Delta);
+>          if Count=Limit then
+>          begin
+>               Error(coOverflow,1);
+>               exit;
+>          end;
+>     end;
+>     //Move Collection one Index up
+>     if Index<OldCount then move(Items^[Index],Items^[Index+1],(OldCount-Index)*4);
+>     inc(Count);
+>     Items^[Index]:=Item;
+>end;
+#procedure TCollection.AtPut(Index: Integer; Item: Pointer); assembler;
+#end;
+>procedure TCollection.AtPut(Index: Integer; Item: Pointer);
+>label l;
+>begin
+>     if Index<0 then
+>     begin
+>l:
+>          Error(CoIndexError,1);
+>          exit;
+>     end;
+>     if Index>=Count then goto l;
+>     Items^[Index]:=Item;
+>end;
+#function TCollection.FirstThat(Test: Pointer): Pointer; assembler;
+#end;
+>function TCollection.FirstThat(Test: Pointer): Pointer;
+>var p:function(Item,EBP:Pointer):Boolean;
+>    t:LongInt;
+>    _ebp:POINTER;
+>begin
+>     asm
+>        mov eax,[EBP]  //FirstThat Callbacks sind lokal !!
+>        mov _ebp,eax
+>     end;
+>     if Count=0 then
+>     begin
+>          FirstThat:=NIL;
+>          exit;
+>     end;
+>     p:=Test;
+>     for t:=0 to Count-1 do
+>     begin
+>          if p(Items^[t],_ebp) then
+>          begin
+>               FirstThat:=Items^[t];
+>               exit;
+>          end;
+>     end;
+>     FirstThat:=NIL;
+>end;
+#procedure TCollection.ForEach(Action: Pointer); assembler;
+#end;
+>procedure TCollection.ForEach(Action: Pointer);
+>var p:procedure(Item,EBP:Pointer);
+>    t:LongInt;
+>    _ebp:Pointer;
+>begin
+>     asm   //ForEach Funktionen sind lokal !!!
+>        mov eax,[EBP]
+>        mov _ebp,eax
+>     end;
+>     if Count=0 then exit;
+>     p:=Action;
+>     for t:=0 to Count-1 do p(Items^[t],_ebp);
+>end;
+#function TCollection.IndexOf(Item: Pointer): Integer; assembler;
+#end;
+>function TCollection.IndexOf(Item: Pointer): Integer;
+>var t:LongInt;
+>begin
+>     if Count=0 then
+>     begin
+>          IndexOf:=-1;
+>          exit;
+>     end;
+>
+>     for t:=0 to Count-1 do
+>     begin
+>          if Items^[t]=Item then
+>          begin
+>               IndexOf:=t;
+>               exit;
+>          end;
+>     end;
+>     IndexOf:=-1;
+>end;
+#function TCollection.LastThat(Test: Pointer): Pointer; assembler;
+#end;
+>function TCollection.LastThat(Test: Pointer): Pointer;
+>var p:function(Item,ebp:Pointer):Boolean;
+>    t:LongInt;
+>    LastResult:Pointer;
+>    _ebp:Pointer;
+>begin
+>     asm
+>        mov eax,[ebp]   //LastThat CallBacks sind lokal !!
+>        mov _ebp,eax
+>     end;
+>     if Count=0 then
+>     begin
+>          LastThat:=NIL;
+>          exit;
+>     end;
+>     p:=Test;
+>     LastResult:=NIL;
+>     for t:=0 to Count-1 do if p(Items^[t],_ebp) then LastResult:=Items^[t];
+>     LastThat:=LastResult;
+>end;
+#procedure TCollection.Pack; assembler;
+#end;
+>procedure TCollection.Pack;
+>var t,t1:LongInt;
+>begin
+>     if Count=0 then exit;
+>     t1:=1;
+>     for t:=0 to Count-1 do
+>     begin
+>          if Items^[t]<>nil then
+>          begin
+>               Items^[t1]:=Items^[t];
+>               inc(t1);
+>          end;
+>     end;
+>     Count:=t1;
+>end;
+#function TStringCollection.Compare(Key1, Key2: Pointer): Integer; assembler;
+#end;
+>function TStringCollection.Compare(Key1, Key2: Pointer): Integer;
+>begin
+>    asm
+>       cld
+>       xor eax,eax
+>       xor edx,edx
+>       mov esi,Key1
+>       mov edi,Key2
+>       lodsb
+>       mov dl,[edi]
+>       inc edi
+>       mov ecx,eax
+>       cmp cl,dl
+>       jbe !l1
+>       mov cl,dl
+>!l1:
+>       repe
+>       cmpsb
+>       je !l2
+>       mov al,[esi-1]
+>       mov dl,[edi-1]
+>!l2:
+>       sub eax,edx
+>       mov Result,eax
+>    end;
+>end;
+#{$IFNDEF Windows }
+>
+#function TResourceCollection.KeyOf(Item: Pointer): Pointer; assembler;
+#end;
+>function TResourceCollection.KeyOf(Item: Pointer): Pointer;
+>begin
+>     inc(Item,8);
+>     KeyOf:=Item;
+>end;
+#{$IFDEF NewExeFormat}
+>
+#{$ENDIF}
+>
+#{$IFDEF NewExeFormat}
+>
+#{$ENDIF}
+>
+#{$IFDEF NewExeFormat}
+#{$ENDIF}
+>       $5A4D:                                  { 'MZ' }
+>       begin
+>            Stream^.Read(ExeHeader, SizeOf(TExeHeader));
+>            BasePos := ExeHeader.eNewHeader;
+>            Stop := False;
+>       end;
+>       $584C:                                  { 'LX' }
+>       begin
+>            BasePos := Stream^.GetSize - 8;
+>            Stop := False;
+>       end;
+>       $4246:                                  { 'FB' }
+>       begin
+>            Stop := False;
+>            case Header.Infotype of
+>              $5250:                            {'PR': Found Resource}
+>              begin
+>                  Found := True;
+>                  Stop := True;
+>              end;
+>              $4C42: Dec(BasePos, Header.InfoSize - 8); {'BL': Found BackLink}
+>              $4648: Dec(BasePos, SizeOf(THeader) * 2); {'HF': Found HelpFile}
+>              else Stop := True;
+>            end;
+>       end;
+>       $424E:                                  { 'NB' }
+>          if Header.InfoType = $3230 then       { '02': Found Debug Info}
+>          begin
+>            Dec(BasePos, Header.InfoSize);
+>            Stop := False;
+>          end;
+#function TStringList.Get(Key: Word): String; assembler;
+#end;
+>function TStringList.Get(Key: Word): String;
+>var t:LongInt;
+>    temp:Word;
+>    result:String;
+>begin
+>     if IndexSize=0 then
+>     begin
+>          Get:='';
+>          exit;
+>     end;
+>     result:='';
+>     for t:=1 to IndexSize do
+>     begin
+>          Temp:=Key-Index^[t].Key;
+>          if Temp<Index^[t].Count then
+>          begin
+>               ReadStr(Result,Index^[t].Offset,Temp);
+>               Get:=Result;
+>               exit;
+>          end;
+>     end;
+>     Get:='';
+>end;
+#procedure CheckEmpty; near; assembler;
+#end;
+>procedure CheckEmpty(Var r:TRect);
+>begin
+>     if ((r.A.X>=r.B.X)or(r.A.Y>=r.B.Y)) then fillchar(r,sizeof(TRect),0);
+>end;
+#procedure TRect.Assign(XA, YA, XB, YB: Integer); assembler;
+#end;
+>procedure TRect.Assign(XA, YA, XB, YB: Integer);
+>begin
+>      A.X:=XA;
+>      A.Y:=YA;
+>      B.X:=XB;
+>      B.Y:=YB;
+>end;
+#procedure TRect.Copy(R: TRect); assembler;
+#end;
+>procedure TRect.Copy(R: TRect);
+>begin
+>     system.move(R.A,A,2*sizeof(TPoint));
+>end;
+#procedure TRect.Move(ADX, ADY: Integer); assembler;
+#end;
+>procedure TRect.Move(ADX, ADY: Integer);
+>begin
+>      inc(A.X,ADX);
+>      inc(B.X,ADX);
+>      inc(A.Y,ADY);
+>      inc(B.Y,ADY);
+>end;
+#procedure TRect.Grow(ADX, ADY: Integer); assembler;
+#end;
+>procedure TRect.Grow(ADX, ADY: Integer);
+>begin
+>     asm
+>       MOV     EDI,Self
+>       MOV     AX,ADX
+>       SUB     [EDI].TRect.A.X,AX
+>       ADD     [EDI].TRect.B.X,AX
+>       MOV     AX,ADY
+>       SUB     [EDI].TRect.A.Y,AX
+>       ADD     [EDI].TRect.B.Y,AX
+>       PUSH    DWORD PTR SELF
+>       CALLN32 Objects.CheckEmpty
+>     end;
+>end;
+#procedure TRect.Intersect(R: TRect); assembler;
+#end;
+>procedure TRect.Intersect(R: TRect);
+>begin
+>      asm
+>         LEA ESI,r
+>         LEA ESI,[ESI].TRect.A.X
+>         MOV EDI,SELF
+>         LEA EDI,[EDI].TRect.A.X
+>         CLD
+>
+>         //Process TRect.A
+>         LODSW
+>         SCASW
+>         JLE     !l11
+>         DEC     EDI
+>         DEC     EDI
+>         STOSW
+>!l11:
+>         LODSW
+>         SCASW
+>         JLE     !l12
+>         DEC     EDI
+>         DEC     EDI
+>         STOSW
+>!l12:
+>         LEA ESI,r
+>         LEA ESI,[ESI].TRect.B.X
+>         MOV EDI,SELF
+>         LEA EDI,[EDI].TRect.B.X
+>
+>         //Process TRect.B
+>         LODSW
+>         SCASW
+>         JGE     !l13
+>         DEC     EDI
+>         DEC     EDI
+>         STOSW
+>!l13:
+>         LODSW
+>         SCASW
+>         JGE     !l14
+>         DEC     EDI
+>         DEC     EDI
+>         STOSW
+>!l14:
+>         PUSH DWORD PTR SELF
+>         CALLN32 Objects.CheckEmpty
+>      end;
+>end;
+#procedure TRect.Union(R: TRect); assembler;
+#end;
+>procedure TRect.Union(R: TRect);
+>begin
+>    asm
+>        LEA ESI,r
+>        LEA ESI,[ESI].TRect.A.X
+>        MOV EDI,SELF
+>        LEA EDI,[EDI].TRect.A.X
+>        CLD
+>
+>        //Process TRect.A
+>        LODSW
+>        SCASW
+>        JGE     !l21
+>        DEC     EDI
+>        DEC     EDI
+>        STOSW
+>!l21:
+>        LODSW
+>        SCASW
+>        JGE     !l22
+>        DEC     EDI
+>        DEC     EDI
+>        STOSW
+>!l22:
+>        LEA ESI,r
+>        LEA ESI,[ESI].TRect.B.X
+>        MOV EDI,SELF
+>        LEA EDI,[EDI].TRect.B.X
+>
+>        //Process TRect.B
+>        LODSW
+>        SCASW
+>        JLE     !l23
+>        DEC     EDI
+>        DEC     EDI
+>        STOSW
+>!l23:
+>        LODSW
+>        SCASW
+>        JLE     !l24
+>        DEC     EDI
+>        DEC     EDI
+>        STOSW
+>!l24:
+>     end;
+>end;
+#function TRect.Contains(P: TPoint): Boolean; assembler;
+#end;
+>function TRect.Contains(P: TPoint): Boolean;
+>var result:boolean;
+>label l1;
+>begin
+>      result:=false;
+>      if P.X<A.X then goto l1;
+>      if P.X>=B.X then goto l1;
+>      if P.Y<A.Y then goto l1;
+>      if P.Y>=B.Y then goto l1;
+>      result:=true;
+>l1:
+>      Contains:=result;
+>end;
+#function TRect.Equals(R: TRect): Boolean; assembler;
+#end;
+>function TRect.Equals(R: TRect): Boolean;
+>begin
+>      if R=TRect(A) then Equals:=true
+>      else Equals:=false;
+>end;
+#function TRect.Empty: Boolean; assembler;
+#end;
+>function TRect.Empty: Boolean;
+>begin
+>      if A.X>=B.X then result:=true
+>      else if A.Y>=B.Y then result:=true
+>      else result:=false;
+>end;
+#{$ENDIF}
+>
+#end.
+>begin
+>     RCollection.ObjType:=50;
+>     RCollection.VmtLink:=TypeOf(TCollection);
+>     RCollection.Load:=@TCollection.Load;
+>     RCollection.Store:=@TCollection.Store;
+>     RStringCollection.ObjType:=51;
+>     RStringCollection.VmtLink:=TypeOf(TStringCollection);
+>     RStringCollection.Load:=@TStringCollection.Load;
+>     RStringCollection.Store:=@TStringCollection.Store;
+>     RStrCollection.ObjType:=69;
+>     RStrCollection.VmtLink:=TypeOf(TStrCollection);
+>     RStrCollection.Load:=@TStrCollection.Load;
+>     RStrCollection.Store:=@TStrCollection.Store;
+>     RStringList.ObjType:=52;
+>     RStringList.VmtLink:=TypeOf(TStringList);
+>     RStringList.Load:=@TStringList.Load;
+>     RStringList.Store:=NIL;
+>     RStrListMaker.ObjType:=52;
+>     RStrListMaker.VmtLink:=TypeOf(TStrListMaker);
+>     RStrListMaker.Load:=NIL;
+>     RStrListMaker.Store:=@TStrListMaker.Store;
+>end.
+!DRIVERS.PAS
+#{$X+,I-,S-,P-}
+#{$C FIXED PRELOAD PERMANENT}
+>{$I-,S-}
+#uses Objects;
+>uses Os2Def,BseDos,BseSub,Objects;
+#{ Keyboard state and shift masks }
+> kbAltTab     = $A500; kbAltDel     = $A300;  kbAltIns       = $A200;
+> kbAltPgDn    = $A100; kbAltDown    = $A000;  kbAltEnd       = $9F00;
+> kbAltRight   = $9D00; kbAltLeft    = $9B00;  kbAltPgUp      = $9900;
+> kbAltUp      = $9800; kbAltHome    = $9700;  kbCtrlTab      = $9400;
+> kbCtrlGreyPlus=$9000; kbCtrlCenter = $8F00;  kbCtrlMinus    = $8E00;
+> kbCtrlUp     = $8D00; kbAltF12     = $8C00;  kbAltF11       = $8B00;
+> kbCtrlF12    = $8A00; kbCtrlF11    = $8900;  kbShiftF12     = $8800;
+> kbShiftF11   = $8700; kbF12        = $8600;  kbF11          = $8500;
+> kbAltGrayPlus= $4E00; kbCenter     = $4C00;  kbAltGreyAst   = $3700;
+> kbAltSlash   = $3500; kbAltPeriod  = $3400;  kbAltComma     = $3300;
+> kbAltBackSlash=$2B00; kbAltOpQuote = $2900;  kbAltQuote     = $2800;
+> kbAltSemicolon=$2700; kbAltRgtBrack= $1B00;  kbAltLftBrack  =$1A00;
+> kbAltEsc     = $0100; kbCtrlDown   = $9100;  kbAltShiftBack = $0900;
+>
+> kbCtrlA      = $1E01;  kbCtrlB     = $3002;  kbCtrlC     = $2E03;
+> kbCtrlD      = $2004;  kbCtrlE     = $1205;  kbCtrlF     = $2106;
+> kbCtrlG      = $2207;  kbCtrlH     = $2308;  kbCtrlI     = $1709;
+> kbCtrlJ      = $240A;  kbCtrlK     = $250B;  kbCtrlL     = $260C;
+> kbCtrlM      = $320D;  kbCtrlN     = $310E;  kbCtrlO     = $180F;
+> kbCtrlP      = $1910;  kbCtrlQ     = $1011;  kbCtrlR     = $1312;
+> kbCtrlS      = $1F13;  kbCtrlT     = $1414;  kbCtrlU     = $1615;
+> kbCtrlV      = $2F16;  kbCtrlW     = $1117;  kbCtrlX     = $2D18;
+> kbCtrlY      = $1519;  kbCtrlZ     = $2C1A;
+>
+>
+>{ Keyboard state and shift masks }
+#  kbInsState    = $0080;
+>  kbInsState    = $0080;
+>  kbShift       = kbLeftShift + kbRightShift;
+>
+>{Shift state variable}
+>var
+>   ShiftState:LONGWORD;
+>
+>const
+#function GetShiftState: Byte;
+>function GetShiftState: LONGWORD;
+#function SystemError(ErrorCode: Integer; Drive: Byte): Integer;
+>
+#const
+#  SysErrorFunc: TSysErrorFunc = SystemError;
+>var
+>{ Initialized variables }
+>  SysErrorFunc: TSysErrorFunc;
+>
+>const
+#procedure MoveChar(var Dest; C: Char; Attr: Byte; Count: Word);
+>procedure MoveChar(var Dest; Ch1: Char; Attr: Byte; Count: Word);
+#var
+#{ Event manager variables }
+>var
+>
+>{ Event manager variables }
+#  DownTicks: Word;
+#  AutoDelay: Word;
+>  DownTicks: LongWord;
+>  AutoTicks: LongWord;
+>  AutoDelay: LongWord;
+#var
+#  Ticks: Word absolute $40:$6C;
+>
+#procedure DetectMouse; near; assembler;
+#end;
+>{Mouse Handle}
+>var HMouse:HMOU;
+>
+>procedure DetectMouse;
+>var
+>  MouPos: PtrLoc;
+>  MouseButtons: Word;
+>begin
+>  if MouOpen(nil,HMouse) = 0 then
+>  begin
+>      MouGetNumButtons(MouseButtons,HMouse);
+>      ButtonCount := MouseButtons;
+>      {Set mouse position to (0,0)}
+>      MouPos.Row:=0;
+>      MouPos.Col:=0;
+>      MouSetPtrPos(MouPos,HMouse);
+>  end
+>  else ButtonCount:=0;  {No mouse available ??}
+>end;
+#procedure StoreEvent; near; assembler;
+#end;
+>{Stores Mouse event in event}
+>procedure StoreMouseEvent(What: Word;VAR TheEvent:MouEventInfo;
+>                          VAR Dest:TEvent);
+>begin
+>    MouseWhere.X:=TheEvent.Col;
+>    MouseWhere.Y:=TheEvent.Row;
+>    LastButtons:=MouseButtons;
+>    Dest.What:=What;
+>    Dest.Buttons:=LastButtons;
+>    Dest.Double:=LastDouble;
+>    Dest.Where:=MouseWhere;
+>end;
+#{ Get mouse state }
+#end;
+>
+#procedure MouseInt; far; assembler;
+#end;
+>
+#procedure InitEvents; assembler;
+#end;
+>procedure InitEvents;
+>var
+>  MouseEventMask:Word;
+>  MousePos:PtrLoc;
+>begin
+>    if ButtonCount=0 then exit; {No mouse available}
+>    MouGetPtrPos(MousePos,HMouse);  {get current mouse position}
+>    MouseWhere.X:=MousePos.Col;
+>    MouseWhere.Y:=MousePos.Row;
+>    ShowMouse;
+>    MouseEventMask:=$FFFF;  {we want to get all events}
+>    MouSetEventMask(MouseEventMask,HMouse);
+>    DownButtons:=0;
+>    LastDouble:=False;
+>    LastButtons:=0;    {No button pressed ??}
+>    MouseEvents:=True;
+>end;
+#procedure DoneEvents; assembler;
+#end;
+>procedure DoneEvents;
+>var
+>  MouseEventMask:Word;
+>begin
+>    if ButtonCount=0 then exit; {No mouse available}
+>    HideMouse;
+>    MouseEventMask:=0;   {We want to get no events}
+>    MouSetEventMask(MouseEventMask,HMouse);
+>    MouseEvents := False;
+>end;
+#procedure ShowMouse; assembler;
+#end;
+>procedure ShowMouse;
+>begin
+>     if ButtonCount <> 0 then MouDrawPtr(HMouse); {Only if mouse here}
+>end;
+#procedure HideMouse; assembler;
+#end;
+>procedure HideMouse;
+>var Screen:NoPtrRect;
+>begin
+>    if ButtonCount <> 0 then  {only if mouse here}
+>    begin
+>         Screen.Row:=0;
+>         Screen.Col:=0;
+>         Screen.cRow:=ScreenHeight-1;
+>         Screen.cCol:=ScreenWidth-1;
+>         MouRemovePtr(Screen,HMouse);
+>    end;
+>end;
+>
+>
+>var MouseMSec:LONGINT;
+>
+>procedure UpdateMouse;
+>var
+>  MousePos: PtrLoc;
+>  MSec: Longint;
+>begin
+>  DosQuerySysInfo(QSV_MS_COUNT, QSV_MS_COUNT, MSec,4);
+>  if MSec-MouseMSec>=4 then
+>  begin
+>      MouseMSec := MSec;
+>      MouGetPtrPos(MousePos, HMouse);
+>      MouseWhere.X := MousePos.Col;
+>      MouseWhere.Y := MousePos.Row;
+>  end;
+>end;
+#procedure GetMouseEvent(var Event: TEvent); assembler;
+#end;
+>procedure GetMouseEvent(var Event: TEvent);
+>var
+>  Button1,Button2: Byte;
+>  MouseQueueInfo: MouQueInfo;
+>  MouseEvent: MouEventInfo;
+>const
+>  Button1__Down=MOUSE_MOTION_WITH_BN1_DOWN or MOUSE_BN1_DOWN;
+>  Button2__Down=MOUSE_MOTION_WITH_BN2_DOWN or MOUSE_BN2_DOWN;
+>  WaitFlag:Word=mou_NoWait;
+>begin
+>    if MouseEvents=FALSE then {disabled ??}
+>    begin
+>         Event.What:=evNothing;
+>         exit;
+>    end;
+>
+>    MouGetNumQueEl(MouseQueueInfo,HMouse);  {get Elements in Queue}
+>    if MouseQueueInfo.cEvents=0 then {no events ??}
+>    begin
+>        {Simulate with last event}
+>        MouseButtons := LastButtons;
+>        {Get Time for that event}
+>        DosQuerySysInfo(QSV_MS_COUNT,QSV_MS_COUNT,MouseEvent.Time,
+>                        SizeOf(MouseEvent.Time));
+>        MouseEvent.Col:= MouseWhere.X;
+>        MouseEvent.Row:= MouseWhere.Y;
+>    end
+>    else  {there are entries in the queue}
+>    begin
+>         if MouseReverse then {switch buttons ??}
+>         begin
+>              Button1 := mbRightButton;
+>              Button2 := mbLeftButton;
+>         end
+>         else
+>         begin
+>              Button1 := mbLeftButton;
+>              Button2 := mbRightButton;
+>         end;
+>         MouReadEventQue(MouseEvent,WaitFlag,HMouse);
+>         if (MouseEvent.fs and Button1__Down) <> 0 then MouseButtons := Button1
+>         else MouseButtons := 0;
+>         if (MouseEvent.fs and Button2__Down) <> 0 then MouseButtons:=MouseButtons or Button2;
+>    end;
+>
+>    MouseMSec:=MouseEvent.Time;
+>
+>    if MouseButtons=0 then if LastButtons <> 0 then
+>    begin
+>         StoreMouseEvent(evMouseUp,MouseEvent,Event);
+>         exit;
+>    end;
+>
+>    if  LastButtons=MouseButtons then
+>    begin
+>         if ((MouseEvent.Col<>MouseWhere.X)OR(MouseEvent.Row<>MouseWhere.Y)) then
+>         begin
+>              StoreMouseEvent(evMouseMove,MouseEvent,Event);
+>              exit;
+>         end;
+>
+>        if MouseButtons<>0 then
+>          if ((MouseEvent.Time div 55)-AutoTicks)>=AutoDelay then
+>          begin
+>               AutoDelay:=1;
+>               AutoTicks:=MouseEvent.Time div 55;
+>               StoreMouseEvent(evMouseAuto,MouseEvent,Event);
+>               exit;
+>          end;
+>
+>        StoreMouseEvent(evNothing,MouseEvent,Event);
+>        exit;
+>    end;
+>
+>    LastDouble := False;
+>    if MouseButtons=DownButtons then
+>      if MouseEvent.Col=DownWhere.X then if MouseEvent.Row=DownWhere.Y then
+>        if ((MouseEvent.Time div 55)-DownTicks)<DoubleDelay then
+>          LastDouble:=true;
+>    DownTicks   := MouseEvent.Time div 55;
+>    AutoTicks   := DownTicks;
+>    AutoDelay   := RepeatDelay;
+>    DownWhere.Y := MouseEvent.Row;
+>    DownWhere.X := MouseEvent.Col;
+>    DownButtons := MouseButtons;
+>    StoreMouseEvent(evMouseDown,MouseEvent,Event);
+>end;
+#procedure GetKeyEvent(var Event: TEvent); assembler;
+#end;
+>procedure GetKeyEvent(var Event: TEvent);
+>var
+>  KeyInfo: KbdKeyInfo;
+>begin
+>     KbdCharIn(KeyInfo,IO_NOWAIT,0);
+>     if (KeyInfo.fbStatus and KBDTRF_FINAL_CHAR_IN)=0 then  {invalid}
+>     begin
+>          Event.What:=evNothing;
+>          exit;
+>     end;
+>
+>     Event.What:=evKeyDown;
+>     Event.CharCode:=KeyInfo.chChar;
+>     Event.ScanCode:=KeyInfo.chScan;
+>     ShiftState:=KeyInfo.fsState;
+>
+>     {convert scancodes}
+>     case KeyInfo.chScan of
+>        $39:  //Space
+>        begin
+>             if (KeyInfo.fsState and kbAltShift)=kbAltShift then
+>               Event.KeyCode:=kbAltSpace;
+>        end;
+>        $52: //Ins
+>        begin
+>             if (KeyInfo.fsState and kbCtrlShift)=kbCtrlShift then
+>                Event.KeyCode:=kbCtrlIns
+>             else if (KeyInfo.fsState and kbLeftShift)=kbLeftShift then
+>                Event.KeyCode:=kbShiftIns
+>             else if (KeyInfo.fsState and kbRightShift)=kbRightShift then
+>                Event.KeyCode:=kbShiftIns
+>             else if (KeyInfo.fsState and kbShift)=kbShift then
+>                Event.KeyCode:=kbShiftIns;
+>        end;
+>        $92: //Ctrl-Ins
+>        begin
+>             if (KeyInfo.fsState and kbCtrlShift)=kbCtrlShift then
+>                Event.KeyCode:=kbCtrlIns;
+>        end;
+>        $53: //Del
+>        begin
+>             if (KeyInfo.fsState and kbCtrlShift)=kbCtrlShift then
+>                Event.KeyCode:=kbCtrlDel
+>             else if (KeyInfo.fsState and kbLeftShift)=kbLeftShift then
+>                Event.KeyCode:=kbShiftDel
+>             else if (KeyInfo.fsState and kbRightShift)=kbRightShift then
+>                Event.KeyCode:=kbShiftDel
+>             else if (KeyInfo.fsState and kbShift)=kbShift then
+>                Event.KeyCode:=kbShiftDel;
+>        end;
+>        $93: //Ctrl-Del
+>        begin
+>             if (KeyInfo.fsState and kbCtrlShift)=kbCtrlShift then
+>                Event.KeyCode:=kbCtrlDel;
+>        end;
+>        $0e: //Backspace
+>        begin
+>             if (KeyInfo.fsState and kbAltShift+kbLeftShift)=kbAltShift+kbLeftShift then
+>                Event.KeyCode:=kbAltShiftBack
+>             else if (KeyInfo.fsState and kbAltShift+kbRightShift)=kbAltShift+kbRightShift then
+>                Event.KeyCode:=kbAltShiftBack
+>             else if (KeyInfo.fsState and kbAltShift+kbShift)=kbAltShift+kbShift then
+>                Event.KeyCode:=kbAltShiftBack
+>             else if (KeyInfo.fsState and kbAltShift)=kbAltShift then
+>                Event.KeyCode:=kbAltBack;
+>        end;
+>     end; {case}
+>
+>     if Event.KeyCode=$E00D then Event.KeyCode:=kbEnter;
+>
+>     if Event.CharCode=#$E0 then
+>       if Event.ScanCode IN [$48{up},$50{down},$4b{left},$4d{right},
+>                             $51{Pg dwn},$49{Pg up},$47{Home},$4f{End},
+>                             $52{Ins},$53{Del},$8d{Ctrl up},$91{Ctrl dwn},
+>                             Hi(kbCtrlLeft),Hi(kbCtrlRight),
+>                             Hi(kbCtrlHome),Hi(kbCtrlEnd),
+>                             Hi(kbCtrlPgUp), Hi(kbCtrlPgDn)]
+>         then Event.CharCode:=#0; {not printable}
+>end;
+>
+>procedure InitKeyboard;
+>var
+>  KeyInfo: KbdInfo;
+>begin
+>    KeyInfo.cb := SizeOf(KbdInfo);
+>    KbdGetStatus(KeyInfo,0);
+>    KeyInfo.fsMask:=(KeyInfo.fsMask and (not KEYBOARD_ASCII_MODE)) or KEYBOARD_BINARY_MODE;
+>    KbdSetStatus(KeyInfo,0);
+>end;
+#function GetShiftState: Byte; assembler;
+#end;
+>function GetShiftState: LONGWORD;
+>var
+>  KeyInfo: KbdInfo;
+>begin
+>    KeyInfo.cb := SizeOf(KbdInfo);
+>    KbdGetStatus(KeyInfo, 0);
+>    ShiftState:=KeyInfo.fsState;
+>    GetShiftState:=ShiftState;
+>end;
+#{ ******** SCREEN MANAGER ******** }
+#end;
+>{ ******** SCREEN MANAGER ******** }
+>
+>{Internal mode info}
+>var VideoMode: VioModeInfo;
+>
+#{ Return CRT mode in AX and dimensions in DX }
+#end;
+>function GetCrtMode: Word;
+>var
+>  Mode: Word;
+>begin
+>     VideoMode.cb:=SizeOf(VioModeInfo);
+>     VioGetMode(VideoMode,0);
+>     IF (VideoMode.fbType and VGMT_DISABLEBURST)=0 then Mode:=smCO80
+>     else Mode :=smBW80;
+>     if VideoMode.Color=0 then Mode:=smMono;
+>     if VideoMode.Row > 25 then Inc(Mode,smFont8x8);
+>     if ((VideoMode.fbType and VGMT_Graphics) <> 0)or(VideoMode.Col <> 80) then
+>       GetCrtMode := 0
+>     else GetCrtMode := Mode;
+>end;
+#{ Set CRT mode to value in AX }
+#end;
+>procedure SetCrtMode(Mode: Word);
+>var
+>  VideoConfigInfo:VioConfigInfo;
+>  BiosMode:Byte;
+>begin
+>     BiosMode := Lo(Mode);
+>     VideoConfigInfo.cb:=SizeOf(VioConfigInfo);
+>     VioGetConfig(0, VideoConfigInfo,0);
+>
+>     VideoMode.cb:=SizeOf(VioModeInfo);
+>     VideoMode.Row:=25;
+>     VideoMode.Col:=80;
+>     VideoMode.VRes:=400;
+>     VideoMode.HRes:=720;
+>     VideoMode.fbType:=VGMT_OTHER;
+>     VideoMode.Color:=COLORS_16;
+>
+>     if (Mode and smFont8x8) <> 0 then
+>     begin
+>          case VideoConfigInfo.Adapter of
+>             DISPLAY_MONOCHROME..DISPLAY_CGA: ;
+>             DISPLAY_EGA:
+>             begin
+>                  VideoMode.Row:=43;
+>                  VideoMode.VRes:=350;
+>                  VideoMode.HRes:=640;
+>             end;
+>             else
+>             begin
+>                  VideoMode.Row:=50;
+>                  VideoMode.VRes:=400;
+>                  VideoMode.HRes:=720;
+>             end;
+>          end; {case}
+>     end;
+>
+>     case BiosMode of
+>         smMono:
+>         begin
+>              VideoMode.HRes:=720;
+>              VideoMode.VRes:=350;
+>              VideoMode.Color:=0;
+>              VideoMode.fbType:=0;
+>         end;
+>         smBW80: VideoMode.fbType := VGMT_OTHER + VGMT_DISABLEBURST;
+>     end; {case}
+>
+>     VioSetMode(VideoMode,0);
+>end;
+#{ Fix CRT mode in AX if required }
+#end;
+>function FixCrtMode(Mode: Word): Word;
+>var BiosMode:Byte;
+>begin
+>     BiosMode:=Lo(Mode);
+>     case BiosMode of
+>         smMono,smBW80,smCO80:FixCrtMode:=Mode;
+>         else FixCrtMode := smCO80;
+>     end; {case}
+>end;
+#procedure SetCrtData; near; assembler;
+#end;
+>procedure SetCrtData;
+>var
+>  VideoConfigInfo:VioConfigInfo;
+>  BufSize:Word;
+>  CursorData:VioCursorInfo;
+>begin
+>    ScreenMode := GetCrtMode;
+>    HiResScreen  := False;
+>
+>    {Get physical screen buffer}
+>    VioGetBuf(ScreenBuffer,BufSize,0);
+>    {we need a flat pointer !}
+>    asm
+>       mov eax,drivers.ScreenBuffer
+>       ror eax,16
+>       shr ax,3
+>       rol eax,16
+>       mov drivers.ScreenBuffer,eax
+>    end;
+>
+>    ScreenHeight := VideoMode.Row;
+>    ScreenWidth := VideoMode.Col;
+>
+>    ShowMouse;
+>
+>    VideoConfigInfo.cb:=SizeOf(VioConfigInfo);
+>    if VioGetConfig(0,VideoConfigInfo,0)=0 then
+>    begin
+>        if VideoConfigInfo.Adapter>=DISPLAY_EGA then
+>           HiResScreen := True;
+>    end;
+>
+>    VioGetCurType(CursorData, 0);
+>    WordRec(CursorLines).Hi := CursorData.yStart;
+>    WordRec(CursorLines).Lo := CursorData.cEnd;
+>    CursorData.attr:=$FFFF;  {Mask}
+>    VioSetCurType(CursorData,0); {Hide Cursor}
+>end;
+#procedure DetectVideo; assembler;
+#end;
+>procedure DetectVideo;
+>begin
+>  ScreenMode := FixCrtMode(GetCrtMode);
+>end;
+#procedure InitVideo; assembler;
+#end;
+>procedure InitVideo;
+>begin
+>    StartupMode := GetCrtMode;
+>    if StartupMode <> ScreenMode then SetCrtMode(ScreenMode);
+>    SetCrtData;
+>end;
+#procedure DoneVideo; assembler;
+#end;
+>procedure DoneVideo;
+>begin
+>    if (StartupMode <> $FFFF) and (StartupMode <> ScreenMode) then
+>      SetCrtMode(StartupMode);
+>    ClearScreen;
+>end;
+#procedure SetVideoMode(Mode: Word); assembler;
+#end;
+>procedure SetVideoMode(Mode: Word);
+>begin
+>    SetCrtMode(FixCrtMode(Mode));
+>    SetCrtData;
+>end;
+#procedure ClearScreen; assembler;
+#end;
+>procedure ClearScreen;
+>const
+>    VioCell:Word=$0720; //Space white foreground, black back
+>begin
+>     VioScrollUp(0,0,65535,65535,65535,VioCell,0);
+>     VioSetCurPos(0,0,0);
+>end;
+#{$IFDEF DPMI}
+#{$ENDIF}
+>
+#const
+#{ System error handler routines }
+>{ System error handler routines }
+#procedure InitSysError; external;
+>procedure InitSysError;
+>begin
+>    {not supported yet}
+>end;
+#procedure DoneSysError; external;
+>procedure DoneSysError;
+>begin
+>    {not supported yet}
+>end;
+#procedure SwapStatusLine(var Buffer); near; assembler;
+#end;
+>
+#function SelectKey: Integer; near; assembler;
+#end;
+>
+#{$V-}
+#{$V+}
+>
+#{$L FORMAT.OBJ}
+#external {FORMAT};
+>{global variables used for FormatStr}
+>var ParOfs,ParamsPtr:Pointer;
+>    Buffer:array[1..12] of byte;
+>
+>const
+>    HexDigits: array [0..15] of Char = '0123456789ABCDEF';
+>
+>{ Convert next parameter to string  }
+>{ In : al = Conversion character    }
+>{ Out: esi   = Pointer to string    }
+>{      ecx   = String length        }
+>procedure Convert;ASSEMBLER;
+>asm
+>   MOV   EDX,EAX
+>   MOV   ESI,Drivers.ParamsPtr
+>   LODSD
+>   MOV   Drivers.ParamsPtr,ESI
+>   XOR   ECX,ECX
+>   MOV   ESI,Offset(Drivers.Buffer)
+>   ADD   ESI,12
+>   AND   DL,$DF
+>   CMP   DL,'C'
+>   JE    !ConvertChar
+>   CMP   DL,'S'
+>   JE    !ConvertStr
+>   CMP   DL,'D'
+>   JE    !ConvertDec
+>   CMP   DL,'X'
+>   JE    !ConvertHex
+>   JMP   !Done
+>!ConvertStr:
+>   TEST  EAX,EAX
+>   JZ    !Done
+>   MOV   ESI,EAX
+>   LODSB
+>   MOV   CL,AL
+>   JMP !Done
+>!ConvertHex:
+>   MOV   EDX,EAX
+>   AND   EDX,$0F
+>   ADD   EDX,Offset(Drivers.HexDigits)
+>   MOV   DL,[EDX]
+>   DEC   ESI
+>   INC   ECX
+>   MOV   [ESI],DL
+>   SHR   EAX,4
+>   JNZ   !ConvertHex
+>   JMP   !Done
+>!ConvertDec:
+>   PUSH  ESI
+>   MOV   EBX,EAX
+>   MOV   ECX,10
+>   TEST  EAX,EAX
+>   JNS   !l2
+>   NEG   EAX
+>!l2:
+>   XOR   EDX,EDX
+>   DEC   ESI
+>   DIV   ECX
+>   ADD   DL,'0'
+>   MOV   [ESI],DL
+>   TEST  EAX,EAX
+>   JNZ   !l2
+>   POP   ECX
+>   SUB   ECX,ESI
+>   TEST  EBX,EBX
+>   JNS   !Done
+>   MOV   AL,'-'
+>!ConvertChar:
+>   INC   ECX
+>   DEC   ESI
+>   MOV   [ESI],AL
+>!Done:
+>end;
+>
+>procedure FormatStr(var Result: String; const Format: String; var Params);
+>begin
+>     asm
+>        MOV     EAX,Params
+>        MOV     Drivers.ParOfs,EAX
+>        MOV     Drivers.ParamsPtr,EAX
+>        XOR     EAX,EAX
+>        MOV     ESI,Format
+>        MOV     EDI,Result
+>        INC     EDI
+>        CLD
+>        LODSB
+>        MOV     ECX,EAX
+>!ll1:
+>        CMP     ECX,0
+>        JE      !ll9
+>        LODSB
+>        DEC     ECX
+>        CMP     AL,'%'
+>        JE      !ll3
+>!ll2:
+>        STOSB
+>        JMP     !ll1
+>!ll3:
+>        CMP     ECX,0
+>        JE      !ll9
+>        LODSB
+>        DEC     ECX
+>        CMP     AL,'%'
+>        JE      !ll2
+>        MOV     BL,' '
+>        MOVZX   EBX,BL
+>        XOR     EDX,EDX
+>        CMP     AL,'0'
+>        JNE     !ll4
+>        MOV     BL,AL
+>!ll4:
+>        CMP     AL,'-'
+>        JNE     !ll5
+>        INC     BH
+>        CMP     ECX,0
+>        JE      !ll9
+>        LODSB
+>        DEC     ECX
+>!ll5:
+>        CMP     AL,'0'
+>        JB      !ll6
+>        CMP     AL,'9'
+>        JA      !ll6
+>        SUB     AL,'0'
+>        XCHG    EAX,EDX
+>        MOV     AH,10
+>        MUL     AH
+>        ADD     AL,DL
+>        XCHG    EAX,EDX
+>        CMP     ECX,0
+>        JE      !ll9
+>        LODSB
+>        DEC     ECX
+>        JMP     !ll5
+>!ll6:
+>        CMP     AL,'#'
+>        JNE     !ll10
+>        SHL     EDX,2
+>        ADD     EDX,Drivers.ParOfs
+>        MOV     Drivers.ParamsPtr,EDX
+>        JMP     !ll1
+>!ll9:
+>        MOV     EAX,Result
+>        MOV     ECX,EDI
+>        SUB     ECX,EAX
+>        DEC     ECX
+>        MOV     [EAX],CL
+>        JMP     !!Done
+>!ll10:
+>        PUSH    ESI
+>        PUSH    ECX
+>        PUSH    EDX
+>        PUSH    EBX
+>        CALLN32 Drivers.Convert
+>        POP     EBX
+>        POP     EDX
+>        TEST    EDX,EDX
+>        JZ      !ll12
+>        SUB     EDX,ECX
+>        JAE     !ll12
+>        TEST    BH,BH
+>        JNZ     !ll11
+>        SUB     ESI,EDX
+>!ll11:
+>        ADD     ECX,EDX
+>        XOR     EDX,EDX
+>!ll12:
+>        TEST    BH,BH
+>        JZ      !ll13
+>        REP
+>        MOVSB
+>!ll13:
+>        XCHG    ECX,EDX
+>        MOV     AL,BL
+>        REP
+>        STOSB
+>        XCHG    ECX,EDX
+>        REP
+>        MOVSB
+>        POP     ECX
+>        POP     ESI
+>        JMP     !ll1
+>!!Done:
+>     end;
+>end;
+#procedure PrintStr(const S: String); assembler;
+#end;
+>procedure PrintStr(const S: String);
+>var
+>   Actual:LongWord;
+>   ps:POINTER;
+>begin
+>     ps:=@s[1];
+>     DosWrite(1,ps^,Length(S),Actual);
+>end;
+#procedure MoveBuf(var Dest; var Source; Attr: Byte; Count: Word); assembler;
+#end;
+>procedure MoveBuf(var Dest; var Source; Attr: Byte; Count: Word);
+>begin
+>    asm
+>       MOVZXW   ECX,Count
+>       CMP      ECX,0
+>       JE       !l4_1
+>       MOV      ESI,Source
+>       MOV      EDI,Dest
+>       MOV      AH,Attr
+>       CLD
+>       TEST     AH,AH
+>       JZ       !l3_1
+>!l1_1:
+>       LODSB
+>       STOSW
+>       LOOP     !l1_1
+>       JMP      !l4_1
+>!l2_1:
+>       INC      EDI
+>!l3_1:
+>       MOVSB
+>       LOOP     !l2_1
+>!l4_1:
+>    end;
+>end;
+#procedure MoveChar(var Dest; C: Char; Attr: Byte; Count: Word); assembler;
+#end;
+>procedure MoveChar(var Dest; Ch1: Char; Attr: Byte; Count: Word);
+>begin
+>     asm
+>        MOVZXW     ECX,Count
+>        CMP        ECX,0
+>        JE         !l4_2
+>        MOV        EDI,Dest
+>        MOV        AL,Ch1
+>        MOV        AH,Attr
+>        CLD
+>        TEST       AL,AL
+>        JZ         !l1_2
+>        TEST       AH,AH
+>        JZ         !l3_2
+>        MOV        EDX,EAX
+>        SHL        EAX,16
+>        MOV        AX,DX
+>        SHR        ECX,1
+>        REP
+>        STOSD
+>        ADC        ECX,ECX
+>        REP
+>        STOSW
+>        JMP        !l4_2
+>!l1_2:
+>        MOV        AL,AH
+>!l2_2:
+>        INC        EDI
+>!l3_2:
+>        STOSB
+>        LOOP       !l2_2
+>!l4_2:
+>     end;
+>end;
+#procedure MoveCStr(var Dest; const Str: String; Attrs: Word); assembler;
+#end;
+>procedure MoveCStr(var Dest; const Str: String; Attrs: Word);
+>begin
+>     asm
+>        XOR     ECX,ECX
+>        MOV     ESI,Str
+>        CLD
+>        LODSB
+>        MOV     CL,AL
+>        CMP     ECX,0
+>        JE      !l3_3
+>        MOV     EDI,Dest
+>        MOV     DX,Attrs
+>        MOV     AH,DL
+>!l1_3:
+>        LODSB
+>        CMP     AL,'~'
+>        JE      !l2_3
+>        STOSW
+>        LOOP    !l1_3
+>        JMP     !l3_3
+>!l2_3:
+>        XCHG    AH,DH
+>        LOOP    !l1_3
+>!l3_3:
+>     end;
+>end;
+#procedure MoveStr(var Dest; const Str: String; Attr: Byte); assembler;
+#end;
+>procedure MoveStr(var Dest; const Str: String; Attr: Byte);
+>begin
+>     asm
+>        XOR     ECX,ECX
+>        MOV     ESI,Str
+>        CLD
+>        LODSB
+>        MOV     CL,AL
+>        CMP     ECX,0
+>        JE      !l4_4
+>        MOV     EDI,Dest
+>        MOV     AH,Attr
+>        TEST    AH,AH
+>        JZ      !l3_4
+>!l1_4:
+>        LODSB
+>        STOSW
+>        LOOP    !l1_4
+>        JMP     !l4_4
+>!l2_4:
+>        INC     EDI
+>!l3_4:
+>        MOVSB
+>        LOOP    !l2_4
+>!l4_4:
+>     end;
+>end;
+#function CStrLen(const S: String): Integer; assembler;
+#end;
+>function CStrLen(const S: String): Integer;
+>begin
+>     asm
+>        XOR     ECX,ECX
+>        MOV     EDI,S
+>        MOV     CL,[EDI]
+>        INC     EDI
+>        MOV     EDX,ECX
+>        CMP     ECX,0
+>        JE      !l2_5
+>        MOV     AL,'~'
+>        CLD
+>!l1_5:
+>        REPNE
+>        SCASB
+>        JNE     !l2_5
+>        DEC     EDX
+>        TEST    ESP,ESP
+>        JMP     !l1_5
+>!l2_5:
+>        MOV     EAX,EDX
+>        MOV     Result,EAX
+>     end;
+>end;
+#procedure ExitDrivers; far;
+#end;
+>procedure ExitDrivers;
+>begin
+>  DoneSysError;
+>  DoneEvents;
+>  MouClose(HMouse);
+>  ExitProc := SaveExit;
+>end;
+#begin
+#end.
+>begin
+>  SysErrorFunc:=NIL; {not implemented yet}
+>  InitKeyboard;
+>  DetectMouse;
+>  DetectVideo;
+>  SaveExit := ExitProc;
+>  ExitProc := @ExitDrivers;
+>end.
+!VIEWS.PAS
+#{$O+,F+,X+,I-,S-}
+>{$I-,S-}
+#uses Objects, Drivers, Memory;
+>uses Os2Def,BseDos,BseSub,Objects, Drivers, Memory;
+#    procedure WriteChar(X, Y: Integer; C: Char; Color: Byte;
+>    procedure WriteChar(X, Y: Integer; Ch1: Char; Color: Byte;
+#  RView: TStreamRec = (
+#  );
+>  RView: TStreamRec = (
+>     ObjType: 1;
+>     VmtLink: TypeOf(TView);
+>     Load:    @TView.Load;
+>     Store:   @TView.Store
+>  );
+#  RFrame: TStreamRec = (
+#  );
+>  RFrame: TStreamRec = (
+>     ObjType: 2;
+>     VmtLink: TypeOf(TFrame);
+>     Load:    @TFrame.Load;
+>     Store:   @TFrame.Store
+>  );
+#  RScrollBar: TStreamRec = (
+#  );
+>  RScrollBar: TStreamRec = (
+>     ObjType: 3;
+>     VmtLink: TypeOf(TScrollBar);
+>     Load:    @TScrollBar.Load;
+>     Store:   @TScrollBar.Store
+>  );
+#  RScroller: TStreamRec = (
+#  );
+>  RScroller: TStreamRec = (
+>     ObjType: 4;
+>     VmtLink: TypeOf(TScroller);
+>     Load:    @TScroller.Load;
+>     Store:   @TScroller.Store
+>  );
+#  RListViewer: TStreamRec = (
+#  );
+>  RListViewer: TStreamRec = (
+>     ObjType: 5;
+>     VmtLink: TypeOf(TListViewer);
+>     Load:    @TListViewer.Load;
+>     Store:   @TLIstViewer.Store
+>  );
+#  RGroup: TStreamRec = (
+#  );
+>  RGroup: TStreamRec = (
+>     ObjType: 6;
+>     VmtLink: TypeOf(TGroup);
+>     Load:    @TGroup.Load;
+>     Store:   @TGroup.Store
+>  );
+#  RWindow: TStreamRec = (
+#  );
+>  RWindow: TStreamRec = (
+>     ObjType: 7;
+>     VmtLink: TypeOf(TWindow);
+>     Load:    @TWindow.Load;
+>     Store:   @TWindow.Store
+>  );
+#procedure MapColor; near; assembler;
+#end;
+>procedure MapColor(SelfPtr:PView;VAR al1:BYTE);
+>VAR Palette:PPalette;
+>    Owner:PView;
+>label l,err,l1;
+>begin
+>     if al1=0 then
+>     begin
+>err:
+>          al1:=ErrorAttr;
+>          exit;
+>     end;
+>
+>l:
+>     Palette:=SelfPtr^.GetPalette;
+>     if Palette=nil then
+>     begin
+>l1:
+>          Owner:=SelfPtr^.Owner;
+>          if Owner<>nil then
+>          begin
+>               SelfPtr:=Owner;
+>               goto l;
+>          end
+>          else exit;
+>     end;
+>
+>     if al1>ord(Palette^[0]) then goto err;
+>
+>     asm
+>        MOV EDI,al1
+>        MOV AL,[EDI]
+>        MOV EBX,Palette
+>        XLAT
+>        MOV [EDI],AL
+>     end;
+>
+>     if al1=0 then goto err;
+>     goto l1;
+>end;
+#procedure MapCPair; near; assembler;
+#end;
+>procedure MapCPair(SelfPtr:PView;VAR AX1:WORD);
+>begin
+>     asm
+>        MOV EDI,AX1
+>        MOV AX,[EDI]
+>        TEST AH,AH
+>        JZ  !l1
+>        XCHG AL,AH
+>        MOV [EDI],AX
+>        PUSH DWORD PTR SelfPtr
+>        PUSH EDI
+>        CALLN32 Views.MapColor
+>        MOV EDI,AX1
+>        MOV AX,[EDI]
+>        XCHG AL,AH
+>        MOV [EDI],AX
+>!l1:
+>        PUSH DWORD PTR SelfPtr
+>        PUSH EDI
+>        CALLN32 Views.MapColor
+>     end;
+>end;
+#procedure WriteView; near; assembler;
+#end;
+>
+>var Help30Addr:POINTER;
+>    Help20Addr:POINTER;
+>    Help50Addr:POINTER;
+>
+>
+>ASSEMBLER
+>
+>
+>Views.WriteView PROC NEAR32
+>//SELF    EQU [EBP+8]
+>//Target  EQU [EBP-8]
+>//Buffer  EQU [EBP-12]
+>//BufOfs  EQU [EBP-16]
+>        MOV    [EBP-16],EBX
+>        MOV    [EBP-12],EDI
+>        MOV    EDI,*!Help30
+>        MOV    Views.Help30Addr,EDI
+>        MOV    EDI,*!Help20
+>        MOV    Views.Help20Addr,EDI
+>        MOV    EDI,*!Help50
+>        MOV    Views.Help50Addr,EDI
+>        ADD    CX,BX
+>        XOR    EDX,EDX
+>        MOV    EDI,[EBP+8]
+>        OR     AX,AX
+>        JL     !l3_1
+>        CMP    AX,[EDI].TView.Size.Y
+>        JGE    !l3_1
+>        OR     BX,BX
+>        JGE    !l1_1
+>        XOR    EBX,EBX
+>!l1_1:
+>        CMP    CX,[EDI].TView.Size.X
+>        JLE    !l2_1
+>        MOVZXW ECX,[EDI].TView.Size.X
+>!l2_1:
+>        CMP    BX,CX
+>        JL     !l10_1
+>!l3_1:
+>        RETN32
+>!l10_1:
+>        TESTW  [EDI].TView.State,sfVisible
+>        JZ     !l3_1
+>        CMPD   [EDI].TView.Owner,0
+>        JZ     !l3_1
+>        MOV    [EBP-8],EDI
+>        ADD    AX,[EDI].TView.Origin.Y
+>        MOVSXW ESI,[EDI].TView.Origin.X
+>        ADD    BX,SI
+>        ADD    CX,SI
+>        ADD    [EBP-16],ESI
+>        MOV    EDI,[EDI].TView.Owner
+>        CMP    AX,[EDI].TGroup.Clip.A.Y
+>        JL     !l3_1
+>        CMP    AX,[EDI].TGroup.Clip.B.Y
+>        JGE    !l3_1
+>        CMP    BX,[EDI].TGroup.Clip.A.X
+>        JGE    !l11_1
+>        MOV    BX,[EDI].TGroup.Clip.A.X
+>!l11_1:
+>        CMP    CX,[EDI].TGroup.Clip.B.X
+>        JLE    !l12_1
+>        MOV    CX,[EDI].TGroup.Clip.B.X
+>!l12_1:
+>        CMP    BX,CX
+>        JGE    !l3_1
+>        MOV    EDI,[EDI].TGroup.Last
+>        JMP !l20_1
+>!l23_1:
+>        MOV    SI,[EDI].TView.Origin.X
+>        CMP    BX,SI
+>        JGE    !l24_1
+>        CMP    CX,SI
+>        JLE    !l20_1
+>        CALLN32 [Views.Help30Addr]
+>!l24_1:
+>        ADD    SI,[EDI].TView.Size.X
+>        MOVZX  ESI,SI
+>        CMP    BX,SI
+>        JGE    !l25_1
+>        CMP    CX,SI
+>        JLE    !l31_1
+>        MOV    EBX,ESI
+>!l25_1:
+>        TESTW  [EDI].TView.State,sfShadow
+>        JE     !l20_1
+>        PUSH   SI
+>        MOV    SI,[EDI].TView.Origin.Y
+>        ADD    SI,Views.ShadowSize+6  //Y
+>        CMP    AX,SI
+>        POP    SI
+>        JL     !l27_1
+>        ADD    SI,Views.ShadowSize+4  //X
+>!l26_1:
+>        CMP    BX,SI
+>        JGE    !l27_1
+>        INC    EDX
+>        CMP    CX,SI
+>        JLE    !l27_1
+>        CALLN32 [Views.Help30Addr]
+>        DEC    EDX
+>!l27_1:
+>        JMP    !l20_1
+>!l40_1:
+>        MOV    EDI,[EDI].TView.Owner
+>        MOV    ESI,[EDI].TGroup.Buffer
+>        TEST   ESI,ESI
+>        JZ     !l44_1
+>        CMP    ESI,Drivers.ScreenBuffer
+>        JNE    !l43_1
+>        PUSHAD
+>        CALLN32 Drivers.UpdateMouse
+>        POPAD
+>        CMP    AX,Drivers.MouseWhere+2
+>        JNE    !l43_1
+>        CMP    BX,Drivers.MouseWhere
+>        JA     !l43_1
+>        CMP    CX,Drivers.MouseWhere
+>        JBE    !l43_1
+>        CALLN32 [Views.Help50Addr]
+>        JMP    !l44_1
+>!l43_1:
+>        CALLN32 [Views.Help50Addr]
+>!l44_1:
+>        CMPB    [EDI].TGroup.LockFlag,0
+>        JNE     !l31_1
+>        JMP     !l10_1
+>!Help20:
+>!l20_1:
+>        MOV    EDI,[EDI].TView.Next
+>        CMP    EDI,[EBP-8]
+>        JE     !l40_1
+>        TESTW  [EDI].TView.State,sfVisible
+>        JZ     !l20_1
+>        MOV    SI,[EDI].TView.Origin.Y
+>        CMP    AX,SI
+>        JL     !l20_1
+>        ADD    SI,[EDI].TView.Size.Y
+>        CMP    AX,SI
+>        JL     !l23_1
+>        TESTW  [EDI].TView.State,sfShadow
+>        JZ     !l20_1
+>        ADD    SI,Views.ShadowSize+6  //Y
+>        CMP    AX,SI
+>        JGE    !l20_1
+>        MOV    SI,[EDI].TView.Origin.X
+>        ADD    SI,Views.ShadowSize+4  //X
+>        CMP    BX,SI
+>        JGE    !l22_1
+>        CMP    CX,SI
+>        JLE    !l20_1
+>        CALLN32 [Views.Help30Addr]
+>!l22_1:
+>        ADD    SI,[EDI].TView.Size.X
+>        JMP    !l26_1
+>!Help30:
+>!l30_1:
+>        PUSH DWORD PTR   [EBP-8]
+>        PUSH DWORD PTR   [EBP-16]
+>        PUSHAD
+>        MOV     ECX,ESI
+>        CALLN32 [Views.Help20Addr]
+>        POPAD
+>        POPD    [EBP-16]
+>        POPD    [EBP-8]
+>        MOV     EBX,ESI
+>!l31_1:
+>        RETN32
+>!Help50:
+>!l50_1:
+>        PUSH    EDI
+>        PUSH    ECX
+>        PUSH    EBX
+>        PUSH    EAX
+>        MULB    [EDI].TView.Size.X
+>        ADD     AX,BX
+>        MOVSX   EAX,AX
+>        LEA     EDI,[ESI+EAX*2]
+>        XOR     AL,AL
+>        MOV     AH,Views.ShadowAttr
+>        MOVSX   EBX,BX
+>        MOVSX   ECX,CX
+>        SUB     ECX,EBX
+>        XCHG    ESI,EBX
+>        SUB     ESI,[EBP-16]
+>        SHL     ESI,1
+>        ADD     ESI,[EBP-12]
+>        PUSH    EDI
+>        PUSH    ECX
+>        CLD
+>        TEST    EDX,EDX
+>        JNZ     !l52_1
+>        SHR     ECX,1
+>        REP
+>        MOVSD
+>        ADC     ECX,ECX
+>        REP
+>        MOVSW
+>        JMP     !l70_1
+>!l52_1:
+>        LODSB
+>        INC     ESI
+>        STOSW
+>        LOOP    !l52_1
+>!l70_1:
+>        POP     ECX
+>        POP     EDI
+>        MOV     EAX,Drivers.ScreenBuffer
+>        CMP     EBX,EAX
+>        JNE     !l54_1
+>        SHL     ECX,1
+>        SUB     EDI,EAX
+>        PUSHAD
+>        CALLN32 Drivers.HideMouse
+>        POPAD
+>        PUSHL   0        //Handle
+>        PUSH    ECX      //Len
+>        PUSH    EDI      //Ofs
+>        MOV     AL,3
+>        CALLDLL KbdVio32,50   //VioShowBuf
+>        ADD     ESP,12
+>        PUSHAD
+>        CALLN32 Drivers.ShowMouse
+>        POPAD
+>!l54_1:
+>        POP     EAX
+>        POP     EBX
+>        POP     ECX
+>        POP     EDI
+>        RETN32
+>Views.WriteView ENDP
+>
+>end; {assembler}
+#procedure TView.EndModal(Command: Word);
+#end;
+>procedure TView.EndModal(Command: Word);
+>var
+>  P: PView;
+>begin
+>  P := TopView;
+>  if P <> nil then P^.EndModal(Command);
+>end;
+#procedure TView.GetBounds(var Bounds: TRect); assembler;
+#end;
+>procedure TView.GetBounds(var Bounds: TRect);
+>begin
+>     asm
+>        MOV    ESI,Self
+>        LEA    ESI,[ESI].TView.Origin.X
+>        MOV    EDI,Bounds
+>        LEA    EDI,[EDI].TRect.A.X
+>
+>        //Process TRect.A
+>        CLD
+>        LODSW
+>        MOV    CX,AX
+>        STOSW
+>        LODSW
+>        MOV    DX,AX
+>        STOSW
+>
+>        MOV    ESI,Self
+>        LEA    ESI,[ESI].TView.Size.X
+>        MOV    EDI,Bounds
+>        LEA    EDI,[EDI].TRect.B.X
+>
+>        //Process TRect.B
+>        LODSW
+>        ADD    AX,CX
+>        STOSW
+>        LODSW
+>        ADD    AX,DX
+>        STOSW
+>     end;
+>end;
+#function TView.Exposed: Boolean; assembler;
+#end;
+>
+>var Help_11Addr:POINTER;
+>    Help_20Addr:POINTER;
+>    ExposedTarget:POINTER;
+>
+>function TView.Exposed: Boolean;
+>begin
+>     asm
+>        MOV     EAX,*!l11_2
+>        MOV     Views.Help_11Addr,EAX
+>        MOV     EAX,*!l20_2
+>        MOV     Views.Help_20Addr,EAX
+>        MOV     EDI,Self
+>        TESTW   [EDI].TView.State,sfExposed
+>        JE      !l2_2
+>        XOR     AX,AX
+>        CMP     AX,[EDI].TView.Size.X
+>        JGE     !l2_2
+>        CMP     AX,[EDI].TView.Size.Y
+>        JGE     !l2_2
+>!l1_2:
+>        XOR     BX,BX
+>        MOV     CX,[EDI].TView.Size.X
+>        PUSH    AX
+>        CALLN32 [Views.Help_11Addr]
+>        POP     AX
+>        JNC     !l3_2
+>        MOV     EDI,Self
+>        INC     AX
+>        CMP     AX,[EDI].TView.Size.Y
+>        JL      !l1_2
+>!l2_2:
+>        MOV     AL,0
+>        JMP     !l30_2
+>!l3_2:
+>        MOV     AL,1
+>        JMP     !l30_2
+>!l8_2:
+>        STC
+>!l9_2:
+>        RETN32
+>!l10_2:
+>        MOV     EDI,[EDI].TView.Owner
+>        CMPD    [EDI].TGroup.Buffer,0
+>        JNE     !l9_2
+>!l11_2:
+>        MOV     Views.ExposedTarget,EDI
+>        ADD     AX,[EDI].TView.Origin.Y
+>        MOV     SI,[EDI].TView.Origin.X
+>        ADD     BX,SI
+>        ADD     CX,SI
+>        MOV     EDI,[EDI].TView.Owner
+>        TEST    EDI,EDI
+>        JZ      !l9_2
+>        CMP     AX,[EDI].TGroup.Clip.A.Y
+>        JL      !l8_2
+>        CMP     AX,[EDI].TGroup.Clip.B.Y
+>        JGE     !l8_2
+>        CMP     BX,[EDI].TGroup.Clip.A.X
+>        JGE     !l12_2
+>        MOV     BX,[EDI].TGroup.Clip.A.X
+>!l12_2:
+>        CMP     CX,[EDI].TGroup.Clip.B.X
+>        JLE     !l13_2
+>        MOV     CX,[EDI].TGroup.Clip.B.X
+>!l13_2:
+>        CMP     BX,CX
+>        JGE     !l8_2
+>        MOV     EDI,[EDI].TGroup.Last
+>!l20_2:
+>        MOV     EDI,[EDI].TView.Next
+>        CMP     EDI,Views.ExposedTarget
+>        JE      !l10_2
+>        TESTW   [EDI].TView.State,sfVisible
+>        JZ      !l20_2
+>        MOV     SI,[EDI].TView.Origin.Y
+>        CMP     AX,SI
+>        JL      !l20_2
+>        ADD     SI,[EDI].TView.Size.Y
+>        CMP     AX,SI
+>        JGE     !l20_2
+>        MOV     SI,[EDI].TView.Origin.X
+>        CMP     BX,SI
+>        JL      !l22_2
+>        ADD     SI,[EDI].TView.Size.X
+>        CMP     BX,SI
+>        JGE     !l20_2
+>        MOV     BX,SI
+>        CMP     BX,CX
+>        JL      !l20_2
+>        STC
+>        RETN32
+>!l22_2:
+>        CMP     CX,SI
+>        JLE     !l20_2
+>        ADD     SI,[EDI].TView.Size.X
+>        CMP     CX,SI
+>        JG      !l23_2
+>        MOV     CX,[EDI].TView.Origin.X
+>        JMP     !l20_2
+>!l23_2:
+>        PUSH DWORD PTR   Views.ExposedTarget
+>        PUSH    EDI
+>        PUSH    ESI
+>        PUSH    ECX
+>        PUSH    EAX
+>        MOV     CX,[EDI].TView.Origin.X
+>        CALLN32 [Views.Help_20Addr]
+>        POP     EAX
+>        POP     ECX
+>        POP     EBX
+>        POP     EDI
+>        POPD    Views.ExposedTarget
+>        JC      !l20_2
+>        RETN32
+>!l30_2:
+>        LEAVE
+>        RETN32 4
+>    end;
+>end;
+#function TView.GetColor(Color: Word): Word; assembler;
+#end;
+>function TView.GetColor(Color: Word): Word;
+>begin
+>     MapCPair(@SELF,Color);
+>     GetColor:=Color;
+>end;
+#procedure TView.GetExtent(var Extent: TRect); assembler;
+#end;
+>procedure TView.GetExtent(var Extent: TRect);
+>begin
+>     asm
+>        MOV     ESI,Self
+>        LEA     ESI,[ESI].TView.Size.X
+>        MOV     EDI,Extent
+>        LEA     EDI,[EDI].TRect.A.X
+>        CLD
+>        XOR     AX,AX
+>        STOSW
+>        STOSW
+>        MOV     EDI,Extent
+>        LEA     EDI,[EDI].TRect.B.X
+>        MOVSW
+>        MOVSW
+>     end;
+>end;
+#procedure TView.MakeGlobal(Source: TPoint; var Dest: TPoint); assembler;
+#end;
+>procedure TView.MakeGlobal(Source: TPoint; var Dest: TPoint);
+>begin
+>     asm
+>        MOV     EDI,Self
+>        XOR     AX,AX
+>        MOV     DX,AX
+>!l1_3:
+>        ADD     AX,[EDI].TView.Origin.X
+>        ADD     DX,[EDI].TView.Origin.Y
+>        MOV     EDI,[EDI].TView.Owner
+>        OR      EDI,EDI
+>        JNE     !l1_3
+>        LEA     ESI,Source
+>        LEA     ESI,[ESI].TPoint.X
+>        ADD     AX,[ESI+0] //X
+>        ADD     DX,[ESI+2] //Y
+>        MOV     EDI,Dest
+>        LEA     EDI,[EDI].TPoint.X
+>        CLD
+>        STOSW
+>        XCHG    AX,DX
+>        STOSW
+>     end;
+>end;
+#procedure TView.MakeLocal(Source: TPoint; var Dest: TPoint); assembler;
+#end;
+>procedure TView.MakeLocal(Source: TPoint; var Dest: TPoint);
+>begin
+>     asm
+>        MOV     EDI,Self
+>        XOR     AX,AX
+>        MOV     DX,AX
+>!l1_4:
+>        ADD     AX,[EDI].TView.Origin.X
+>        ADD     DX,[EDI].TView.Origin.Y
+>        MOV     EDI,[EDI].TView.Owner
+>        OR      EDI,EDI
+>        JNE     !l1_4
+>        NEG     AX
+>        NEG     DX
+>        LEA     ESI,Source
+>        LEA     ESI,[ESI].TPoint.X
+>        ADD     AX,[ESI+0]   //Source.X
+>        ADD     DX,[ESI+2]   //Source.Y
+>        MOV     EDI,Dest
+>        LEA     EDI,[EDI].TPoint.X
+>        CLD
+>        STOSW
+>        XCHG    AX,DX
+>        STOSW
+>     end;
+>end;
+#function TView.Prev: PView; assembler;
+#end;
+>function TView.Prev: PView;
+>begin
+>     asm
+>        MOV     EDI,Self
+>        MOV     ECX,EDI
+>!l1_5:
+>        MOV     EAX,EDI
+>        MOV     EDI,[EDI].TView.Next
+>        CMP     EDI,ECX
+>        JNE     !l1_5
+>        LEAVE
+>        RETN32  4
+>     end;
+>end;
+#procedure TView.ResetCursor; assembler;
+#end;
+>procedure TView.ResetCursor;
+>var
+>    CursorData: VioCursorInfo;
+>const
+>    Vis=sfVisible+sfCursorVis+sfFocused;
+>begin
+>     asm
+>        MOV     EDI,Self
+>        MOV     AX,[EDI].TView.State
+>        NOT     AX
+>        TEST    AX,Vis
+>        JNE     !l4_61
+>        MOV     AX,[EDI].TView.Cursor.Y
+>        MOV     DX,[EDI].TView.Cursor.X
+>!l1_6:
+>        TEST    AX,AX
+>        JL      !l4_61
+>        CMP     AX,[EDI].TView.Size.Y
+>        JGE     !l4_61
+>        TEST    DX,DX
+>        JL      !l4_61
+>        CMP     DX,[EDI].TView.Size.X
+>        JGE     !l4_61
+>        ADD     AX,[EDI].TView.Origin.Y
+>        ADD     DX,[EDI].TView.Origin.X
+>        MOV     ECX,EDI
+>        MOV     EDI,[EDI].TView.Owner
+>        TEST    EDI,EDI
+>        JZ      !l4_62
+>        TESTW   [EDI].TView.State,sfVisible
+>        JE      !l4_61
+>        MOV     EDI,[EDI].TGroup.Last
+>!l2_6:
+>        MOV     EDI,[EDI].TView.Next
+>        CMP     ECX,EDI
+>        JNE     !l3_6
+>        MOV     EDI,[EDI].TView.Owner
+>        JMP     !l1_6
+>!l3_6:
+>        TESTW   [EDI].TView.State,sfVisible
+>        JE      !l2_6
+>        MOV     SI,[EDI].TView.Origin.Y
+>        CMP     AX,SI
+>        JL      !l2_6
+>        ADD     SI,[EDI].TView.Size.Y
+>        CMP     AX,SI
+>        JGE     !l2_6
+>        MOV     SI,[EDI].TView.Origin.X
+>        CMP     DX,SI
+>        JL      !l2_6
+>        ADD     SI,[EDI].TView.Size.X
+>        CMP     DX,SI
+>        JGE     !l2_6
+>!l4_61:   //Hide Cursor
+>        MOV     EAX,$ffffffff  //-1
+>        XOR     ECX,ECX
+>        JMP     !l4_6
+>!l4_62:
+>        PUSHL   0       //Handle
+>        MOVZX   EDX,DX
+>        PUSH    EDX     //Column
+>        MOVZX   EAX,AX
+>        PUSH    EAX     //Row
+>        MOV     AL,3
+>        CALLDLL KbdVio32,30  //VioSetCurPos
+>        ADD     ESP,12
+>
+>        XOR     EAX,EAX
+>        MOV     CX,Drivers.CursorLines
+>        MOV     EDI,Self
+>        TESTW   [EDI].TView.State,sfCursorIns
+>        JZ      !l4_6
+>        MOV     CH,1
+>        TEST    CL,CL
+>        JNE     !l4_6
+>        MOV     CL,7
+>!l4_6:
+>        PUSHL   0   //Handle
+>        LEA     EDI,CursorData
+>        MOV     [EDI].VioCursorInfo.attr,AX
+>        MOVZX   DX,CH
+>        MOVZX   CX,CL
+>        MOV     [EDI].VioCursorInfo.yStart,DX
+>        MOV     [EDI].VioCursorInfo.cEnd,CX
+>        MOVW    [EDI].VioCursorInfo.cx,1
+>        PUSH    EDI
+>        MOV AL,2
+>        CALLDLL KbdVio32,32  //VioSetCurType
+>        ADD     ESP,8
+>     end;
+>end;
+#procedure TView.Select;
+#end;
+>procedure TView.Select;
+>begin
+>  if Options and ofSelectable <> 0 then
+>    if Options and ofTopSelect <> 0 then MakeFirst else
+>      if Owner <> nil then Owner^.SetCurrent(@Self, NormalSelect);
+>end;
+#procedure TView.SetBounds(var Bounds: TRect); assembler;
+#end;
+>procedure TView.SetBounds(var Bounds: TRect);
+>begin
+>     asm
+>        MOV     EDI,Self
+>        MOV     ESI,Bounds
+>        MOV     AX,[ESI].TRect.A.X
+>        MOV     [EDI].TView.Origin.X,AX
+>        MOV     AX,[ESI].TRect.A.Y
+>        MOV     [EDI].TView.Origin.Y,AX
+>        MOV     AX,[ESI].TRect.B.X
+>        SUB     AX,[ESI].TRect.A.X
+>        MOV     [EDI].TView.Size.X,AX
+>        MOV     AX,[ESI].TRect.B.Y
+>        SUB     AX,[ESI].TRect.A.Y
+>        MOV     [EDI].TView.Size.Y,AX
+>     end;
+>end;
+#procedure TView.SizeLimits(var Min, Max: TPoint);
+#end;
+>procedure TView.SizeLimits(var Min, Max: TPoint);
+>begin
+>  Longint(Min) := 0;
+>  if Owner <> nil then
+>    Max := Owner^.Size else
+>    Longint(Max) := $7FFF7FFF;
+>end;
+#procedure TView.WriteBuf(X, Y, W, H: Integer; var Buf); assembler;
+#end;
+>procedure TView.WriteBuf(X, Y, W, H: Integer; var Buf);
+>var
+>  Target: Pointer; {Variables used by WriteView}
+>  Buffer: Pointer;
+>  Offset: LongWord;
+>begin
+>     asm
+>        CMPW    H,0
+>        JLE     !l2_7
+>!l1_7:
+>        MOVZXW  EAX,Y
+>        MOVZXW  EBX,X
+>        MOVZXW  ECX,W
+>        MOV     EDI,Buf
+>        CALLN32 Views.WriteView
+>        MOVZXW  EAX,W
+>        SHL     EAX,1
+>        ADD     Buf,EAX
+>        INCW    Y
+>        DECW    H
+>        JNE     !l1_7
+>!l2_7:
+>     end;
+>end;
+#procedure TView.WriteChar(X, Y: Integer; C: Char; Color: Byte;
+#end;
+>procedure TView.WriteChar(X, Y: Integer; Ch1: Char; Color: Byte;
+>                          Count: Integer);
+>var
+>  Target: Pointer; {Variables used by WriteView}
+>  Buffer: Pointer;
+>  Offset: LongWord;
+>begin
+>     MapColor(@SELF,Color);
+>     asm
+>        MOV     AH,Color
+>        MOV     AL,Ch1
+>        MOV     CX,Count
+>        OR      CX,CX
+>        JLE     !l2_8
+>        CMP     CX,256
+>        JLE     !l1_8
+>        MOV     CX,256
+>!l1_8:
+>        MOVZX   ECX,CX
+>        MOV     EDI,ECX
+>        SHL     EDI,1
+>        SUB     ESP,EDI
+>        MOV     EDI,ESP
+>        MOV     DX,CX
+>        CLD
+>        REP
+>        STOSW
+>        MOVZX   ECX,DX
+>        MOV     EDI,ESP
+>        MOVZXW  EAX,Y
+>        MOVZXW  EBX,X
+>        CALLN32 Views.WriteView
+>!l2_8:
+>     end;
+>end;
+#procedure TView.WriteLine(X, Y, W, H: Integer; var Buf); assembler;
+#end;
+>procedure TView.WriteLine(X, Y, W, H: Integer; var Buf);
+>var
+>  Target: Pointer; {Variables used by WriteView}
+>  Buffer: Pointer;
+>  Offset: LongWord;
+>begin
+>     asm
+>        CMPW    H,0
+>        JLE     !l2_9
+>!l1_9:
+>        MOVZXW  EAX,Y
+>        MOVZXW  EBX,X
+>        MOVZXW  ECX,W
+>        MOV     EDI,Buf
+>        CALLN32 Views.WriteView
+>        INCW    Y
+>        DECW    H
+>        JNE     !l1_9
+>!l2_9:
+>     end;
+>end;
+#procedure TView.WriteStr(X, Y: Integer; Str: String; Color: Byte); assembler;
+#end;
+>procedure TView.WriteStr(X, Y: Integer; Str: String; Color: Byte);
+>var
+>  Target: Pointer; {Variables used by WriteView}
+>  Buffer: Pointer;
+>  Offset: LongWord;
+>begin
+>     MapColor(@SELF,Color);
+>     asm
+>        MOV     AH,Color
+>        LEA     ESI,Str
+>        CLD
+>        LODSB
+>        MOV     CL,AL
+>        XOR     CH,CH
+>        CMP     CX,0
+>        JE      !l3_10
+>        MOVZX   ECX,CX
+>        MOV     EDI,ECX
+>        SHL     EDI,1
+>        SUB     ESP,EDI
+>        MOV     EDI,ESP
+>        MOV     DX,CX
+>!l1_10:
+>        LODSB
+>        STOSW
+>        LOOP    !l1_10
+>        MOVZX   ECX,DX
+>        MOV     EDI,ESP
+>        MOVZXW  EAX,Y
+>        MOVZXW  EBX,X
+>        CALLN32 Views.WriteView
+>!l3_10:
+>     end;
+>end;
+#procedure TFrame.FrameLine(var FrameBuf; Y, N: Integer;
+#end;
+>const
+>  InitFrame: array[0..17] of Byte =
+>    ($06, $0A, $0C, $05, $00, $05, $03, $0A, $09,
+>     $16, $1A, $1C, $15, $00, $15, $13, $1A, $19);
+>  FrameChars: array[0..31] of Char =
+>    '   À ³ÚÃ ÙÄÁ¿´ÂÅ   È ºÉÇ ¼ÍÏ»¶Ñ ';
+>procedure TFrame.FrameLine(var FrameBuf; Y, N: Integer;
+>                           Color: Byte);
+>var
+>  FrameMask: array[0..MaxViewWidth-1] of Byte;
+>begin
+>     asm
+>        MOV     EBX,Self
+>        MOV     DX,[EBX].TFrame.Size.X
+>        MOV     CX,DX
+>        DEC     CX
+>        DEC     CX
+>        MOV     ESI,OFFSET(Views.InitFrame)
+>        MOVZXW  EAX,N
+>        ADD     ESI,EAX
+>        LEA     EDI,FrameMask
+>        MOVZX   ECX,CX
+>        CLD
+>        MOVSB
+>        LODSB
+>        REP
+>        STOSB
+>        MOVSB
+>        MOV     EBX,Self
+>        MOV     EBX,[EBX].TFrame.Owner
+>        MOV     EBX,[EBX].TGroup.Last
+>        DEC     DX
+>!l1_11:
+>        MOV     EBX,[EBX].TView.Next
+>        CMP     EBX,Self
+>        JE      !l10_11
+>!l2_11:
+>        TESTW   [EBX].TView.Options,ofFramed
+>        JE      !l1_11
+>        TESTW   [EBX].TView.State,sfVisible
+>        JE      !l1_11
+>        MOV     AX,Y
+>        SUB     AX,[EBX].TView.Origin.Y
+>        JL      !l3_11
+>        CMP     AX,[EBX].TView.Size.Y
+>        JG      !l1_11
+>        MOV     AX,$0005
+>        JL      !l4_11
+>        MOV     AX,$0A03
+>        JMP     !l4_11
+>!l3_11:
+>        INC     AX
+>        JNE     !l1_11
+>        MOV     AX,$0A06
+>!l4_11:
+>        MOV     SI,[EBX].TView.Origin.X
+>        MOV     DI,[EBX].TView.Size.X
+>        ADD     DI,SI
+>        CMP     SI,1
+>        JG      !l5_11
+>        MOV     SI,1
+>!l5_11:
+>        CMP     DI,DX
+>        JL      !l6_11
+>        MOV     DI,DX
+>!l6_11:
+>        CMP     SI,DI
+>        JGE     !l1_11
+>        PUSH    EDI
+>        LEA     EDI,FrameMask
+>        MOVZX   ESI,SI
+>        ADD     EDI,ESI
+>        OR      [EDI-1],AL
+>        POP     EDI
+>        XOR     AL,AH
+>        PUSH    ESI
+>        LEA     ESI,FrameMask
+>        MOVZX   EDI,DI
+>        ADD     ESI,EDI
+>        OR      [ESI],AL
+>        POP     ESI
+>        OR      AH,AH
+>        JE      !l1_11
+>        MOV     CX,DI
+>        SUB     CX,SI
+>        MOVZX   ECX,CX
+>!l8_11:
+>        PUSH    EDI
+>        LEA     EDI,FrameMask
+>        MOVZX   ESI,SI
+>        ADD     EDI,ESI
+>        OR      [EDI],AH
+>        POP     EDI
+>        INC     SI
+>        LOOP    !l8_11
+>        JMP     !l1_11
+>!l10_11:
+>        INC     DX
+>        MOV     AH,Color
+>        MOV     EBX,OFFSET(Views.FrameChars)
+>        MOV     CX,DX
+>        LEA     ESI,FrameMask
+>        MOV     EDI,FrameBuf
+>        MOVZX   ECX,CX
+>!l11_11:
+>        LODSB
+>        XLAT
+>        STOSW
+>        LOOP    !l11_11
+>     end;
+>end;
+#function TScrollBar.GetPos: Integer;
+#end;
+>function TScrollBar.GetPos: Integer;
+>var
+>  R: Integer;
+>begin
+>  R := Max - Min;
+>  if R = 0 then
+>    GetPos := 1 else
+>    GetPos := ((Value - Min) * (GetSize - 3) + R shr 1) div R + 1;
+>end;
+#            SetValue(LongDiv(LongMul(P - 1, Max - Min) + S shr 1, S) + Min);
+>            SetValue(((P - 1) * (Max - Min) + S shr 1) div S + Min);
+#constructor TGroup.Load(var S: TStream);
+#end;
+>constructor TGroup.Load(var S: TStream);
+>var
+>  FixupSave: PFixupList;
+>  Count, I: Integer;
+>  P, Q: ^Pointer;
+>  V: PView;
+>  OwnerSave: PGroup;
+>begin
+>  TView.Load(S);
+>  GetExtent(Clip);
+>  OwnerSave := OwnerGroup;
+>  OwnerGroup := @Self;
+>  FixupSave := FixupList;
+>  S.Read(Count, SizeOf(Word));
+>  asm
+>        MOVZXW  ECX,Count
+>        SHL     ECX,1
+>        SHL     ECX,1
+>        SUB     ESP,ECX
+>        MOV     Views.FixupList,ESP
+>        MOV     EDI,ESP
+>        XOR     AL,AL
+>        CLD
+>        REP
+>        STOSB
+>  end;
+>  for I := 1 to Count do
+>  begin
+>    V := PView(S.Get);
+>    if V <> nil then InsertView(V, nil);
+>  end;
+>  V := Last;
+>  for I := 1 to Count do
+>  begin
+>    V := V^.Next;
+>    P := FixupList^[I];
+>    while P <> nil do
+>    begin
+>      Q := P;
+>      P := P^;
+>      Q^ := V;
+>    end;
+>  end;
+>  OwnerGroup := OwnerSave;
+>  FixupList := FixupSave;
+>  GetSubViewPtr(S, V);
+>  SetCurrent(V, NormalSelect);
+>  if OwnerGroup = nil then Awaken;
+>end;
+#function TGroup.At(Index: Integer): PView; assembler;
+#end;
+>function TGroup.At(Index: Integer): PView;
+>begin
+>     asm
+>        MOV     EDI,Self
+>        MOV     EDI,[EDI].TGroup.Last
+>        MOVZXW  ECX,Index
+>!l1_12:
+>        MOV     EDI,[EDI].TView.Next
+>        LOOP    !l1_12
+>        MOV     EAX,EDI
+>        MOV     Result,EAX
+>     end;
+>end;
+#procedure DoCalcChange(P: PView); far;
+#end;
+>procedure DoCalcChange(P: PView);
+>var
+>  R: TRect;
+>begin
+>  P^.CalcBounds(R, D);
+>  P^.ChangeBounds(R);
+>end;
+#begin
+#end;
+>begin
+>  D.X := Bounds.B.X - Bounds.A.X - Size.X;
+>  D.Y := Bounds.B.Y - Bounds.A.Y - Size.Y;
+>  if Longint(D) = 0 then
+>  begin
+>    SetBounds(Bounds);
+>    DrawView;
+>  end else
+>  begin
+>    FreeBuffer;
+>    SetBounds(Bounds);
+>    GetExtent(Clip);
+>    GetBuffer;
+>    Lock;
+>    ForEach(@DoCalcChange);
+>    Unlock;
+>  end;
+>end;
+#function TGroup.FirstThat(P: Pointer): PView; assembler;
+#end;
+>function TGroup.FirstThat(P: Pointer): PView;
+>var
+>  ALast: Pointer;
+>  dummy: PView;
+>type
+>  FirstThatFunc=FUNCTION(View:PView;EBP:POINTER):BOOLEAN;
+>var
+>  pf:FirstThatFunc;
+>  _ebp:POINTER;
+>label l;
+>begin
+>     asm
+>        mov eax,[ebp]  //FirstThat CallBacks sind lokal !!
+>        mov _ebp,eax
+>     end;
+>     if Last=NIL THEN exit;
+>     ALast:=Last;
+>     dummy:=Last;
+>     pf:=P;
+>l:
+>     dummy:=dummy^.Next;
+>     if pf(dummy,_ebp) then
+>     begin
+>          FirstThat:=dummy;
+>          exit;
+>     end;
+>     if dummy<>ALast then goto l;
+>     FirstThat:=NIL;
+>end;
+#procedure TGroup.ForEach(P: Pointer); assembler;
+#end;
+>procedure TGroup.ForEach(P: Pointer);
+>var
+>  ALast: Pointer;
+>  dummy: PView;
+>type
+>  ForEachProc=PROCEDURE(View:PView;EBP:POINTER);
+>var
+>   pf:ForEachProc;
+>   _ebp:POINTER;
+>label l;
+>begin
+>     asm
+>        mov eax,[ebp]  //ForEach Callbacks sind lokal !!
+>        mov _ebp,eax
+>     end;
+>     if Last=NIL THEN exit;
+>     ALast:=Last;
+>     dummy:=Last;
+>     pf:=P;
+>l:
+>     dummy:=dummy^.Next;
+>     pf(dummy,_ebp);
+>     if dummy<>ALast then goto l;
+>end;
+#procedure TGroup.GetBuffer; assembler;
+#end;
+>procedure TGroup.GetBuffer;
+>begin
+>     asm
+>        MOV    EDI,Self
+>        TESTW  [EDI].TView.State,sfExposed
+>        JZ     !l1_14
+>        TESTW  [EDI].TView.Options,ofBuffered
+>        JZ     !l1_14
+>        MOV    EAX,[EDI].TGroup.Buffer
+>        CMP    EAX,0
+>        JNE    !l1_14
+>        MOV    AX,[EDI].TView.Size.X
+>        MULW   [EDI].TView.Size.Y
+>        JO     !l1_14
+>        SHL    AX,1
+>        JC     !l1_14
+>        JS     !l1_14
+>        LEA    EDI,[EDI].TGroup.Buffer
+>        PUSH   EDI
+>        PUSH   EAX
+>        CALLN32 Memory.NewCache
+>!l1_14:
+>     end;
+>end;
+#function TGroup.IndexOf(P: PView): Integer; assembler;
+#end;
+>function TGroup.IndexOf(P: PView): Integer;
+>begin
+>     asm
+>        MOV     ECX,Self
+>        MOV     ECX,[ECX].TGroup.Last
+>        CMP     ECX,0
+>        JE      !l2_15
+>        MOV     EDX,ECX
+>        XOR     EAX,EAX
+>!l1_15:
+>        INC     EAX
+>        MOV     ECX,[ECX].TView.Next
+>        CMP     ECX,P
+>        JE      !l3_15
+>        CMP     ECX,EDX
+>        JNE     !l1_15
+>!l2_15:
+>        XOR     EAX,EAX
+>!l3_15:
+>        MOV     Result,EAX
+>     end;
+>end;
+#procedure TGroup.RemoveView(P: PView); assembler;
+#end;
+>procedure TGroup.RemoveView(P: PView);
+>begin
+>     asm
+>        MOV     EDX,Self
+>        MOV     EDI,P
+>        MOV     EDX,[EDX].TGroup.Last
+>        TEST    EDX,EDX
+>        JZ      !l4_16
+>        MOV     EAX,EDX
+>!l1_16:
+>        MOV     ECX,[EDX].TGroup.Next
+>        CMP     ECX,EDI
+>        JE      !l2_16
+>        CMP     ECX,EAX
+>        JE      !l4_16
+>        MOV     EDX,ECX
+>        JMP     !l1_16
+>!l2_16:
+>        MOV     ECX,[EDI].TGroup.Next
+>        MOV     [EDX].TGroup.Next,ECX
+>        CMP     EAX,EDI
+>        JNE     !l4_16
+>        CMP     ECX,EDI
+>        JNE     !l3_16
+>        XOR     EDX,EDX
+>!l3_16:
+>        MOV     EDI,Self
+>        MOV     [EDI].TGroup.Last,EDX
+>!l4_16:
+>     end;
+>end;
+#procedure TWindow.Zoom;
+#end;
+>procedure TWindow.Zoom;
+>var
+>  R: TRect;
+>  Max, Min: TPoint;
+>begin
+>  SizeLimits(Min, Max);
+>  if Longint(Size) <> Longint(Max) then
+>  begin
+>    GetBounds(ZoomRect);
+>    Longint(R.A) := 0;
+>    R.B := Max;
+>    Locate(R);
+>  end else Locate(ZoomRect);
+>end;
+#end.
+>begin
+>end.
+!HISTLIST.PAS
+#{$O+,F+,X+,I-,S-}
+>{$I-,S-}
+#  HistorySize: Word = 1024;
+>  HistorySize: LongWord = 1024;
+#  HistoryUsed: Word = 0;
+>  HistoryUsed: LongWord = 0;
+#procedure AdvanceStringPointer; near; assembler;
+#end;
+>procedure AdvanceStringPointer;
+>begin
+>     asm
+>        MOV     ECX,HistList.HistoryUsed
+>        MOV     BL,HistList.CurId
+>        MOV     ESI,HistList.CurString
+>        CMP     ESI,0
+>        JE      !l3
+>        CLD
+>        JMP     !l2
+>!l1:
+>        LODSW
+>        CMP    AH,BL   { BL = CurId }
+>        JE     !l3
+>!l2:
+>        LODSB
+>        MOVZX  EAX,AL
+>        ADD    ESI,EAX
+>        CMP    ESI,ECX { CX = HistoryUsed }
+>        JB     !l1
+>        XOR    ESI,ESI
+>!l3:
+>        MOV    HistList.CurString,ESI
+>     end;
+>end;
+#procedure DeleteString; near; assembler;
+#end;
+>procedure DeleteString;
+>begin
+>   asm
+>        MOV    ECX,HistList.HistoryUsed
+>        CLD
+>        MOV    EDI,HistList.CurString
+>        MOV    ESI,EDI
+>        DEC    EDI
+>        DEC    EDI
+>        MOV    AL,[ESI]
+>        MOVZX  EAX,AL
+>        INC    EAX
+>        ADD    ESI,EAX
+>        SUB    ECX,ESI
+>        REP
+>        MOVSB
+>        MOV    HistList.HistoryUsed,EDI
+>    end;
+>end;
+#procedure InsertString(Id: Byte; const Str: String); near; assembler;
+#end;
+>procedure InsertString(Id: Byte; const Str: String);
+>begin
+>    asm
+>        STD
+>
+>        { Position ES:DI to the end the buffer  }
+>        {          ES:DX to beginning of buffer }
+>        MOV    EDX,HistList.HistoryBlock
+>        MOV    EDI,HistList.HistoryUsed
+>        MOV    ESI,Str
+>        MOV    BL,[ESI]
+>        INC    BL
+>        INC    BL
+>        INC    BL
+>        MOVZX  EBX,BL
+>!l1_1:
+>        MOV    EAX,EDI
+>        ADD    EAX,EBX
+>        SUB    EAX,EDX { EDX = HistoryBlock }
+>        CMP    EAX,HistList.HistorySize
+>        JB     !l2_1
+>
+>        { Drop the last string off the end of the list }
+>        DEC    EDI
+>        XOR    AL,AL
+>        MOV    ECX,$FFFFFFFF
+>        REPNE
+>        SCASB
+>        INC    EDI
+>        JMP    !l1_1
+>
+>        { Move the table down the size of the string }
+>!l2_1:
+>        MOV    ESI,EDI
+>        ADD    EDI,EBX
+>        MOV    HistList.HistoryUsed,EDI
+>        MOV    ECX,ESI
+>        SUB    ECX,EDX { EDX = HistoryBlock }
+>        REP
+>        MOVSB
+>
+>        { Copy the string into the position }
+>        CLD
+>        MOV     EDI,EDX { EDX = HistoryBlock }
+>        INC     EDI
+>        MOV     AH,Id
+>        XOR     AL,AL
+>        STOSW
+>        MOV     ESI,Str
+>        LODSB
+>        STOSB
+>        MOV    CL,AL
+>        MOVZX  ECX,CL
+>        REP
+>        MOVSB
+>    end;
+>end;
+#procedure StartId(Id: Byte); near;
+#end;
+>procedure StartId(Id: Byte);
+>begin
+>  CurId := Id;
+>  CurString := HistoryBlock;
+>end;
+#procedure ClearHistory;
+#end;
+>procedure ClearHistory;
+>begin
+>  PChar(HistoryBlock)^ := #0;
+>  HistoryUsed := PtrRec(HistoryBlock).Ofs + 1;
+>end;
+#end.
+>begin
+>end.
+!MENUS.PAS
+#{$O+,F+,X+,I-,S-}
+>{$I-,S-}
+#{ Stream registration records }
+>{ Stream registration records }
+#  RMenuBar: TStreamRec = (
+#  );
+>  RMenuBar: TStreamRec = (
+>     ObjType: 40;
+>     VmtLink: TypeOf(TMenuBar);
+>     Load:    @TMenuBar.Load;
+>     Store:   @TMenuBar.Store
+>  );
+#  RMenuBox: TStreamRec = (
+#  );
+>  RMenuBox: TStreamRec = (
+>     ObjType: 41;
+>     VmtLink: TypeOf(TMenuBox);
+>     Load:    @TMenuBox.Load;
+>     Store:   @TMenuBox.Store
+>  );
+#  RStatusLine: TStreamRec = (
+#  );
+>  RStatusLine: TStreamRec = (
+>     ObjType: 42;
+>     VmtLink: TypeOf(TStatusLine);
+>     Load:    @TStatusLine.Load;
+>     Store:   @TStatusLine.Store
+>  );
+#  RMenuPopup: TStreamRec = (
+#  );
+>  RMenuPopup: TStreamRec = (
+>     ObjType: 43;
+>     VmtLink: TypeOf(TMenuPopup);
+>     Load:    @TMenuPopup.Load;
+>     Store:   @TMenuPopup.Store
+>  );
+#implementation
+>implementation
+#  MouseActive: Boolean;
+>  MouseActive: Boolean;
+>  dummy:PMenuView;
+#function TopMenu: PMenuView;
+#end;
+>function TopMenu(SelfPtr:PMenuView): PMenuView;
+>var
+>  P: PMenuView;
+>begin
+>  P := SelfPtr;
+>  while P^.ParentMenu <> nil do P := P^.ParentMenu;
+>  TopMenu := P;
+>end;
+#begin
+#end;
+>begin
+>  AutoSelect := False;
+>  Result := 0;
+>  ItemShown := nil;
+>  Current := Menu^.Default;
+>  MouseActive := False;
+>  repeat
+>    Action := DoNothing;
+>    GetEvent(E);
+>    case E.What of
+>      evMouseDown:
+>        if MouseInView(E.Where) or MouseInOwner then
+>        begin
+>          TrackMouse;
+>          if Size.Y = 1 then AutoSelect := True;
+>        end else Action := DoReturn;
+>      evMouseUp:
+>        begin
+>          TrackMouse;
+>          if MouseInOwner then
+>            Current := Menu^.Default
+>          else
+>            if (Current <> nil) and (Current^.Name <> nil) then
+>              Action := DoSelect
+>            else
+>              if MouseActive or MouseInView(E.Where) then Action := DoReturn
+>              else
+>              begin
+>                Current := Menu^.Default;
+>                if Current = nil then Current := Menu^.Items;
+>                Action := DoNothing;
+>              end;
+>        end;
+>      evMouseMove:
+>        if E.Buttons <> 0 then
+>        begin
+>          TrackMouse;
+>          if not (MouseInView(E.Where) or MouseInOwner) and
+>            MouseInMenus then Action := DoReturn;
+>        end;
+>      evKeyDown:
+>        case CtrlToArrow(E.KeyCode) of
+>          kbUp, kbDown:
+>            if Size.Y <> 1 then
+>              TrackKey(CtrlToArrow(E.KeyCode) = kbDown) else
+>              if E.KeyCode = kbDown then AutoSelect := True;
+>          kbLeft, kbRight:
+>            if ParentMenu = nil then
+>              TrackKey(CtrlToArrow(E.KeyCode) = kbRight) else
+>              Action := DoReturn;
+>          kbHome, kbEnd:
+>            if Size.Y <> 1 then
+>            begin
+>              Current := Menu^.Items;
+>              if E.KeyCode = kbEnd then TrackKey(False);
+>            end;
+>          kbEnter:
+>            begin
+>              if Size.Y = 1 then AutoSelect := True;
+>              Action := DoSelect;
+>            end;
+>          kbEsc:
+>            begin
+>              Action := DoReturn;
+>              if (ParentMenu = nil) or (ParentMenu^.Size.Y <> 1) then
+>                ClearEvent(E);
+>            end;
+>        else begin
+>          Target := @Self;
+>          Ch := GetAltChar(E.KeyCode);
+>          if Ch = #0 then Ch := E.CharCode else Target := TopMenu(@SELF);
+>          P := Target^.FindItem(Ch);
+>          if P = nil then
+>          begin
+>            dummy:=TopMenu(@SELF);
+>            P := dummy^.HotKey(E.KeyCode);
+>            if (P <> nil) and CommandEnabled(P^.Command) then
+>            begin
+>              Result := P^.Command;
+>              Action := DoReturn;
+>            end
+>          end else
+>            if Target = @Self then
+>            begin
+>              if Size.Y = 1 then AutoSelect := True;
+>              Action := DoSelect;
+>              Current := P;
+>            end else
+>              if (ParentMenu <> Target) or (ParentMenu^.Current <> P) then
+>                Action := DoReturn; end;
+>        end; {case}
+>      evCommand:
+>        if E.Command = cmMenu then
+>        begin
+>          AutoSelect := False;
+>          if ParentMenu <> nil then Action := DoReturn;
+>        end else Action := DoReturn;
+>    end;
+>    if ItemShown <> Current then
+>    begin
+>      ItemShown := Current;
+>      DrawView;
+>    end;
+>    if (Action = DoSelect) or ((Action = DoNothing) and AutoSelect) then
+>      if Current <> nil then with Current^ do if Name <> nil then
+>        if Command = 0 then
+>        begin
+>          if E.What and (evMouseDown + evMouseMove) <> 0 then PutEvent(E);
+>          GetItemRect(Current, R);
+>          R.A.X := R.A.X + Origin.X;
+>          R.A.Y := R.B.Y + Origin.Y;
+>          R.B := Owner^.Size;
+>          if Size.Y = 1 then Dec(R.A.X);
+>          dummy:=TopMenu(@SELF);
+>          Target := dummy^.NewSubView(R, SubMenu, @Self);
+>          Result := Owner^.ExecView(Target);
+>          Dispose(Target, Done);
+>        end else if Action = DoSelect then Result := Command;
+>    if (Result <> 0) and CommandEnabled(Result) then
+>    begin
+>      Action := DoReturn;
+>      ClearEvent(E);
+>    end
+>    else
+>      Result := 0;
+>  until Action = DoReturn;
+>  if E.What <> evNothing then
+>    if (ParentMenu <> nil) or (E.What = evCommand) then PutEvent(E);
+>  if Current <> nil then
+>  begin
+>    Menu^.Default := Current;
+>    Current := nil;
+>    DrawView;
+>  end;
+>  Execute := Result;
+>end;
+#      if (I <> 0) and (Ch = UpCase(P^.Name^[I + 1])) then
+>      if (I <> 0) and (length(P^.Name^)>I) and (Ch = UpCase(P^.Name^[I + 1])) then
+#end.
+>begin
+>end.
+!VALIDATE.PAS
+#{$O+,F+,X+,I-,S-}
+>{$I-,S-}
+#  RPXPictureValidator: TStreamRec = (
+#  );
+>  RPXPictureValidator: TStreamRec = (
+>    ObjType: 80;
+>    VmtLink: TypeOf(TPXPictureValidator);
+>    Load: @TPXPictureValidator.Load;
+>    Store: @TPXPictureValidator.Store
+>  );
+#  RFilterValidator: TStreamRec = (
+#  );
+>  RFilterValidator: TStreamRec = (
+>    ObjType: 81;
+>    VmtLink: TypeOf(TFilterValidator);
+>    Load: @TFilterValidator.Load;
+>    Store: @TFilterValidator.Store
+>  );
+#  RRangeValidator: TStreamRec = (
+#  );
+>  RRangeValidator: TStreamRec = (
+>    ObjType: 82;
+>    VmtLink: TypeOf(TRangeValidator);
+>    Load: @TRangeValidator.Load;
+>    Store: @TRangeValidator.Store
+>  );
+#  RStringLookupValidator: TStreamRec = (
+#  );
+>  RStringLookupValidator: TStreamRec = (
+>    ObjType: 83;
+>    VmtLink: TypeOf(TStringLookupValidator);
+>    Load: @TStringLookupValidator.Load;
+>    Store: @TStringLookupValidator.Store
+>  );
+#{$IFDEF Windows}
+#{$ENDIF Windows}
+>uses Strings;
+#{$IFDEF Windows}
+#{$ELSE}
+>
+#procedure TPXPictureValidator.Error;
+#{$ENDIF Windows}
+>procedure TPXPictureValidator.Error;
+>begin
+>  {MessageBox('Input does not conform to picture:'#13' %s', @Pic,
+>    mfError + mfOKButton);}  {kreuzverbunden mit MSGBOX}
+>end;
+#function IsNumber(Chr: Char): Boolean; near; assembler;
+#end;
+>function IsNumber(Chr: Char): Boolean;
+>begin
+>     asm
+>        XOR     AL,AL
+>        MOV     Ch,Chr
+>        CMP     Ch,'0'
+>        JB      !l1
+>        CMP     Ch,'9'
+>        JA      !l1
+>        INC     AL
+>!l1:
+>        MOV     Result,AL
+>    end;
+>end;
+#function IsLetter(Chr: Char): Boolean; near; assembler;
+#end;
+>function IsLetter(Chr: Char): Boolean;
+>begin
+>     asm
+>        XOR     AL,AL
+>        MOV     Cl,Chr
+>        AND     Cl,$DF
+>        CMP     Cl,'A'
+>        JB      !l2_1
+>        CMP     Cl,'Z'
+>        JA      !l2_1
+>!l1_1:
+>        INC     AL
+>!l2_1:
+>        MOV     Result,AL
+>     end;
+>end;
+#function IsSpecial(Chr: Char; const Special: string): Boolean; near;
+#end;
+>function IsSpecial(Chr: Char; const Special: string): Boolean;
+>begin
+>     asm
+>        XOR     AH,AH
+>        MOV     EDI,Special
+>        MOV     AL,[EDI]
+>        INC     EDI
+>        MOV     CH,AH
+>        MOV     CL,AL
+>        MOV     AL,Chr
+>        MOVZX   ECX,CX
+>        CLD
+>        REPNE
+>        SCASB
+>        CMP     CX,0
+>        JE      !l1_3
+>        INC     AH
+>!l1_3:
+>        MOV     AL,AH
+>        MOV     Result,AL
+>     end;
+>end;
+#function NumChar(Chr: Char; const S: string): Byte; near; assembler;
+#end;
+>function NumChar(Chr: Char; const S: string): Byte;
+>begin
+>     asm
+>        XOR     AH,AH
+>        MOV     EDI,S
+>        MOV     AL,[EDI]
+>        INC     EDI
+>        MOV     CH,AH
+>        MOV     CL,AL
+>        MOV     AL,Chr
+>        MOVZX   ECX,CX
+>        CLD
+>!l1_4:
+>        REPNE
+>        SCASB
+>        CMP     CX,0
+>        JE      !l2_4
+>        INC     AH
+>        JMP     !l1_4
+>!l2_4:
+>        MOV     AL,AH
+>        MOV     Result,AL
+>    end;
+>end;
+#          if Pic^[I] = ';' then Inc(I);
+#        end;
+>        begin
+>          if Pic^[I] = ';' then Inc(I);
+>          if UpCase(Pic^[I]) <> UpCase(Ch) then
+>            if Ch = ' ' then Ch := Pic^[I]
+>            else Exit;
+>          Consume(Pic^[I]); end;
+>        end;
+#{$IFDEF Windows}
+#{$ELSE}
+>
+#procedure TFilterValidator.Error;
+#{$ENDIF Windows}
+>procedure TFilterValidator.Error;
+>begin
+>  {MessageBox('Invalid character in input', nil, mfError + mfOKButton);}
+>  {kreuzverbunden mit MSGBOX}
+>end;
+#constructor TRangeValidator.Init(AMin, AMax: LongInt);
+#end;
+>constructor TRangeValidator.Init(AMin, AMax: LongInt);
+>var c:TCharSet;
+>begin
+>  c:=['0'..'9','+','-'];
+>  inherited Init(c);
+>  if AMin >= 0 then ValidChars := ValidChars - ['-'];
+>  Min := AMin;
+>  Max := AMax;
+>end;
+#{$IFDEF Windows}
+#{$ELSE}
+>
+#procedure TRangeValidator.Error;
+#{$ENDIF Windows}
+>procedure TRangeValidator.Error;
+>var
+>  Params: array[0..1] of Longint;
+>begin
+>  Params[0] := Min;
+>  Params[1] := Max;
+>  {MessageBox('Value not in the range %d to %d', @Params,
+>    mfError + mfOKButton);}
+>  {kreuzverbunden mit MSGBOX}
+>end;
+#{$IFDEF Windows}
+#{$ELSE}
+>
+#procedure TStringLookupValidator.Error;
+#{$ENDIF Windows}
+>procedure TStringLookupValidator.Error;
+>begin
+>  {MessageBox('Input not in valid-list', nil, mfError + mfOKButton);}
+>  {kreuzverbunden mit MSGBOX}
+>end;
+#function TStringLookupValidator.Lookup(const S: string): Boolean;
+#end;
+>function TStringLookupValidator.Lookup(const S: string): Boolean;
+>var
+>  Index: Integer;
+>  Str: PString;
+>begin
+>  asm
+>        MOV     EDI,S
+>        MOV     Str,EDI
+>  end;
+>  Lookup := False;
+>  if Strings <> nil then
+>    Lookup := Strings^.Search(Str, Index);
+>end;
+#end.
+>begin
+>end.
+!DIALOGS.PAS
+#{$O+,F+,X+,I-,S-}
+>{$I-,S-}
+#  RDialog: TStreamRec = (
+#  );
+>  RDialog: TStreamRec = (
+>     ObjType: 10;
+>     VmtLink: TypeOf(TDialog);
+>     Load:    @TDialog.Load;
+>     Store:   @TDialog.Store
+>  );
+#  RInputLine: TStreamRec = (
+#  );
+>  RInputLine: TStreamRec = (
+>     ObjType: 11;
+>     VmtLink: TypeOf(TInputLine);
+>     Load:    @TInputLine.Load;
+>     Store:   @TInputLine.Store
+>  );
+#  RButton: TStreamRec = (
+#  );
+>  RButton: TStreamRec = (
+>     ObjType: 12;
+>     VmtLink: TypeOf(TButton);
+>     Load:    @TButton.Load;
+>     Store:   @TButton.Store
+>  );
+#  RCluster: TStreamRec = (
+#  );
+>  RCluster: TStreamRec = (
+>     ObjType: 13;
+>     VmtLink: TypeOf(TCluster);
+>     Load:    @TCluster.Load;
+>     Store:   @TCluster.Store
+>  );
+#  RRadioButtons: TStreamRec = (
+#  );
+>  RRadioButtons: TStreamRec = (
+>     ObjType: 14;
+>     VmtLink: TypeOf(TRadioButtons);
+>     Load:    @TRadioButtons.Load;
+>     Store:   @TRadioButtons.Store
+>  );
+#  RCheckBoxes: TStreamRec = (
+#  );
+>  RCheckBoxes: TStreamRec = (
+>     ObjType: 15;
+>     VmtLink: TypeOf(TCheckBoxes);
+>     Load:    @TCheckBoxes.Load;
+>     Store:   @TCheckBoxes.Store
+>  );
+#  RMultiCheckBoxes: TStreamRec = (
+#  );
+>  RMultiCheckBoxes: TStreamRec = (
+>     ObjType: 27;
+>     VmtLink: TypeOf(TMultiCheckBoxes);
+>     Load:    @TMultiCheckBoxes.Load;
+>     Store:   @TMultiCheckBoxes.Store
+>  );
+#  RListBox: TStreamRec = (
+#  );
+>  RListBox: TStreamRec = (
+>     ObjType: 16;
+>     VmtLink: TypeOf(TListBox);
+>     Load:    @TListBox.Load;
+>     Store:   @TListBox.Store
+>  );
+#  RStaticText: TStreamRec = (
+#  );
+>  RStaticText: TStreamRec = (
+>     ObjType: 17;
+>     VmtLink: TypeOf(TStaticText);
+>     Load:    @TStaticText.Load;
+>     Store:   @TStaticText.Store
+>  );
+#  RLabel: TStreamRec = (
+#  );
+>  RLabel: TStreamRec = (
+>     ObjType: 18;
+>     VmtLink: TypeOf(TLabel);
+>     Load:    @TLabel.Load;
+>     Store:   @TLabel.Store
+>  );
+#  RHistory: TStreamRec = (
+#  );
+>  RHistory: TStreamRec = (
+>     ObjType: 19;
+>     VmtLink: TypeOf(THistory);
+>     Load:    @THistory.Load;
+>     Store:   @THistory.Store
+>  );
+#  RParamText: TStreamRec = (
+#  );
+>  RParamText: TStreamRec = (
+>     ObjType: 20;
+>     VmtLink: TypeOf(TParamText);
+>     Load:    @TParamText.Load;
+>     Store:   @TParamText.Store
+>  );
+#function Max(A, B: Integer): Integer;
+#       {@@1:            }
+>function Max(A, B: Integer): Integer;
+>begin
+>     if A>B then Max:=A
+>     else Max:=B;
+>end;
+#function TCluster.ButtonState(Item: Integer): Boolean; assembler;
+#end;
+>function TCluster.ButtonState(Item: Integer): Boolean;
+>begin
+>     asm
+>        XOR     AL,AL
+>        MOV     CX,Item
+>        CMP     CX,31
+>        JA      !l3
+>        MOV     AX,1
+>        XOR     DX,DX
+>        CMP     CX,0
+>        JE      !l2
+>        MOVZX   ECX,CX
+>!l1:
+>        SHL     AX,1
+>        RCL     DX,1
+>        LOOP    !l1
+>!l2:
+>        MOV     EDI,Self
+>        AND     AX,[EDI].TCluster.EnableMask
+>        AND     DX,[EDI+2].TCluster.EnableMask
+>        OR      AX,DX
+>        JZ      !l3
+>        MOV     AL,1
+>!l3:
+>        MOV     Result,AL
+>     end;
+>end;
+#procedure TCluster.SetButtonState(AMask: Longint; Enable: Boolean); assembler;
+#end;
+>procedure TCluster.SetButtonState(AMask: Longint; Enable: Boolean);
+>begin
+>     asm
+>        MOV     EDI,Self
+>        MOV     AX,AMask
+>        MOV     DX,AMask+2
+>        TESTB   Enable,$FF
+>        JNZ     !l1_1
+>        NOT     AX
+>        NOT     DX
+>        AND     [EDI].TCluster.EnableMask,AX
+>        AND     [EDI+2].TCluster.EnableMask,DX
+>        JMP     !l2_1
+>!l1_1:
+>        OR      [EDI].TCluster.EnableMask,AX
+>        OR      [EDI+2].TCluster.EnableMask,DX
+>!l2_1:
+>        PUSH    EDI
+>        LEA     EDI,[EDI].TCluster.Strings
+>        MOV     CX,[EDI].TCollection.Count
+>        POP     EDI
+>        MOVZX   ECX,CX
+>        CMP     ECX,32
+>        JA      !l6_1
+>        MOV     BX,[EDI].TCluster.Options
+>        MOV     AX,ofSelectable
+>        NOT     AX
+>        AND     BX,AX
+>        MOV     AX,[EDI].TCluster.EnableMask
+>        MOV     DX,[EDI+2].TCluster.EnableMask
+>!l3_1:
+>        SHR     DX,1
+>        RCR     AX,1
+>        JC      !l4_1
+>        LOOP    !l3_1
+>        JMP     !l5_1
+>!l4_1:
+>        OR      BX,ofSelectable
+>!l5_1:
+>        MOV     [EDI].TCluster.Options,BX
+>!l6_1:
+>    end;
+>end;
+#end.
+>begin
+>end.
+!APP.PAS
+#{$O+,F+,X+,I-,S-}
+>{$I-,S-}
+#  RBackground: TStreamRec = (
+#    Store: @TBackground.Store);
+>  RBackground: TStreamRec = (
+>    ObjType: 30;
+>    VmtLink: TypeOf(TBackground);
+>    Load: @TBackground.Load;
+>    Store: @TBackground.Store);
+#  RDesktop: TStreamRec = (
+#    Store: @TDesktop.Store);
+>  RDesktop: TStreamRec = (
+>    ObjType: 31;
+>    VmtLink: TypeOf(TDesktop);
+>    Load: @TDesktop.Load;
+>    Store: @TDesktop.Store);
+#function ISqr(X: Integer): Integer; assembler;
+#end;
+>function ISqr(X: Integer): Integer;
+>begin
+>    asm
+>       MOV     CX,X
+>       MOV     BX,0
+>!l1:
+>       INC     BX
+>       MOV     AX,BX
+>       IMUL    AX
+>       CMP     AX,CX
+>       JLE     !l1
+>       MOV     AX,BX
+>       DEC     AX
+>       MOV     Result,AX
+>   end;
+>end;
+#function DividerLoc(Lo, Hi, Num, Pos: Integer): Integer;
+#end;
+>function DividerLoc(Lo, Hi, Num, Pos: Integer): Integer;
+>begin
+>  DividerLoc := (((Hi - Lo)*Pos) DIV Num) + Lo;
+>end;
+#end.
+>begin
+>end.
+!STDDLG.PAS
+#{$O+,F+,V-,X+,I-,S-}
+>{$I-,S-}
+#    Name: string[12];
+>    Name: string;
+#  RFileInputLine: TStreamRec = (
+#  );
+>  RFileInputLine: TStreamRec = (
+>     ObjType: 60;
+>     VmtLink: TypeOf(TFileInputLine);
+>     Load:    @TFileInputLine.Load;
+>     Store:   @TFileInputLine.Store
+>  );
+#  RFileCollection: TStreamRec = (
+#  );
+>  RFileCollection: TStreamRec = (
+>     ObjType: 61;
+>     VmtLink: TypeOf(TFileCollection);
+>     Load:    @TFileCollection.Load;
+>     Store:   @TFileCollection.Store
+>  );
+#  RFileList: TStreamRec = (
+#  );
+>  RFileList: TStreamRec = (
+>     ObjType: 62;
+>     VmtLink: TypeOf(TFileList);
+>     Load:    @TFileList.Load;
+>     Store:   @TFileList.Store
+>  );
+#  RFileInfoPane: TStreamRec = (
+#  );
+>  RFileInfoPane: TStreamRec = (
+>     ObjType: 63;
+>     VmtLink: TypeOf(TFileInfoPane);
+>     Load:    @TFileInfoPane.Load;
+>     Store:   @TFileInfoPane.Store
+>  );
+#  RFileDialog: TStreamRec = (
+#  );
+>  RFileDialog: TStreamRec = (
+>     ObjType: 64;
+>     VmtLink: TypeOf(TFileDialog);
+>     Load:    @TFileDialog.Load;
+>     Store:   @TFileDialog.Store
+>  );
+#  RDirCollection: TStreamRec = (
+#  );
+>  RDirCollection: TStreamRec = (
+>     ObjType: 65;
+>     VmtLink: TypeOf(TDirCollection);
+>     Load:    @TDirCollection.Load;
+>     Store:   @TDirCollection.Store
+>  );
+#  RDirListBox: TStreamRec = (
+#  );
+>  RDirListBox: TStreamRec = (
+>     ObjType: 66;
+>     VmtLink: TypeOf(TDirListBox);
+>     Load:    @TDirListBox.Load;
+>     Store:   @TDirListBox.Store
+>  );
+#  RChDirDialog: TStreamRec = (
+#  );
+>  RChDirDialog: TStreamRec = (
+>     ObjType: 67;
+>     VmtLink: TypeOf(TChDirDialog);
+>     Load:    @TChDirDialog.Load;
+>     Store:   @TChDirDialog.Store
+>  );
+#  RSortedListBox: TStreamRec = (
+#  );
+>  RSortedListBox: TStreamRec = (
+>     ObjType: 68;
+>     VmtLink: TypeOf(TSortedListBox);
+>     Load:    @TSortedListBox.Load;
+>     Store:   @TSortedListBox.Store
+>  );
+#uses App, Memory, HistList, MsgBox;
+>uses App, Memory, HistList, MsgBox,BseDos,Os2Def;
+#function DriveValid(Drive: Char): Boolean; near; assembler;
+#end;
+>function DriveValid(Drive: Char): Boolean;
+>var
+>  DriveNumber,DriveMap:LongWord;
+>begin
+>    if DosQueryCurrentDisk(DriveNumber,DriveMap)<>0 then DriveValid:=FALSE
+>    else DriveValid:=((1 shl (Ord(Drive) - Ord('A'))) and DriveMap) <> 0;
+>end;
+#function PathValid(var Path: PathStr): Boolean;
+#end;
+>function PathValid(var Path: PathStr): Boolean;
+>var
+>  ExpPath: PathStr;
+>  SR: SearchRec;
+>begin
+>  ExpPath := FExpand(Path);
+>  if Length(ExpPath) <= 3 then PathValid := DriveValid(ExpPath[1])
+>  else
+>  begin
+>    if ExpPath[Length(ExpPath)] = '\' then Dec(ExpPath[0]);
+>    FindFirst(ExpPath, Directory, SR);
+>    DosFindClose(SR.HDir);
+>    PathValid := (DosError = 0) and (SR.Attr and Directory <> 0);
+>  end;
+>end;
+#function Contains(S1, S2: String): Boolean; near; assembler;
+#end;
+>function Contains(CONST S1, S2: String): Boolean;
+>begin
+>     asm
+>        CLD
+>        MOV    ESI,S1
+>        MOV    EDI,S2
+>        MOV    EDX,EDI
+>        XOR    AH,AH
+>        LODSB
+>        MOV    BX,AX
+>        OR     BX,BX
+>        JZ     !l2
+>        MOV    AL,[EDI]
+>        XCHG   AX,CX
+>        MOVZX  ECX,CX
+>!l1:
+>        PUSH   ECX
+>        MOV    EDI,EDX
+>        LODSB
+>        REPNE
+>        SCASB
+>        POP    ECX
+>        JE     !l3
+>        DEC    BX
+>        JNZ    !l1
+>!l2:
+>        XOR    AL,AL
+>        JMP    !l4
+>!l3:
+>        MOV    AL,1
+>!l4:
+>        MOV Result,AL
+>     end;
+>end;
+#function IsDir(const S: String): Boolean;
+#end;
+>function IsDir(const S: String): Boolean;
+>var
+>  SR: SearchRec;
+>begin
+>  FindFirst(S, Directory, SR);
+>  DosFindClose(SR.HDir);
+>  if DosError = 0 then
+>    IsDir := SR.Attr and Directory <> 0
+>  else IsDir := False;
+>end;
+#procedure TFileList.ReadDirectory(AWildCard: PathStr);
+#end;
+>procedure TFileList.ReadDirectory(AWildCard: PathStr);
+>const
+>  FindAttr = ReadOnly + Archive;
+>  AllFiles = '*.*';
+>  PrevDir  = '..';
+>var
+>  S: SearchRec;
+>  P: PSearchRec;
+>  FileList: PFileCollection;
+>  NumFiles: Word;
+>  CurPath: PathStr;
+>  Dir: DirStr;
+>  Name: NameStr;
+>  Ext: ExtStr;
+>  Event: TEvent;
+>  Tmp: PathStr;
+>  Flag: Integer;
+>begin
+>  NumFiles := 0;
+>  AWildCard := FExpand(AWildCard);
+>  FSplit(AWildCard, Dir, Name, Ext);
+>  {$i-}
+>  ChDir(Dir);
+>  {$i+}
+>  FileList := New(PFileCollection, Init(5, 5));
+>  FindFirst(AWildCard, FindAttr, S);
+>  P := @P;
+>  while (P <> nil) and (DosError = 0) do
+>  begin
+>    if (S.Attr and Directory = 0) then
+>    begin
+>      P := MemAlloc(SizeOf(P^));
+>      if P <> nil then
+>      begin
+>        Move(S.Attr, P^, SizeOf(P^));
+>        FileList^.Insert(P);
+>      end;
+>    end;
+>    FindNext(S);
+>  end;
+>  FindClose(S);
+>  Tmp := Dir + AllFiles;
+>  FindFirst(Tmp, Directory, S);
+>  while (P <> nil) and (DosError = 0) do
+>  begin
+>    if (S.Attr and Directory <> 0) and (S.Name[1] <> '.') then
+>    begin
+>      P := MemAlloc(SizeOf(P^));
+>      if P <> nil then
+>      begin
+>        Move(S.Attr, P^, SizeOf(P^));
+>        FileList^.Insert(PObject(P));
+>      end;
+>    end;
+>    FindNext(S);
+>  end;
+>  FindClose(S);
+>  if Length(Dir) > 4 then
+>  begin
+>    P := MemAlloc(SizeOf(P^));
+>    if P <> nil then
+>    begin
+>      FindFirst(Tmp, Directory, S);
+>      FindNext(S);
+>      if (DosError = 0) and (S.Name = PrevDir) then
+>        Move(S.Attr, P^, SizeOf(P^))
+>      else
+>      begin
+>        P^.Name := PrevDir;
+>        P^.Size := 0;
+>        P^.Time := $210000;
+>        P^.Attr := Directory;
+>      end;
+>      FileList^.Insert(PObject(P));
+>    end;
+>  end;
+>  FindClose(S);
+>  if P = nil then MessageBox('Too many files.', nil, mfOkButton + mfWarning);
+>  NewList(FileList);
+>  if List^.Count > 0 then
+>  begin
+>    Event.What := evBroadcast;
+>    Event.Command := cmFileFocused;
+>    Event.InfoPtr := List^.At(0);
+>    Owner^.HandleEvent(Event);
+>  end;
+>end;
+#  M := Month[Time.Month];
+>  IF Time.Month=0 THEN Time.Month:=1;
+>  M := Month[Time.Month];
+#{ TFileDialog }
+>
+>VAR OldFileDlgDir:STRING;
+>
+>{ TFileDialog }
+#  R.Assign(15,1,64,20);
+>  {$i-}
+>  GetDir(0,OldFileDlgDir);
+>  {$i+}
+>  R.Assign(15,1,64,20);
+#  TDialog.Done;
+>  {$i-}
+>  ChDir(OldFileDlgDir);
+>  {$i+}
+>  TDialog.Done;
+#  RelativePath := not (S <> '') and ((S[1] = '\') or (S[2] = ':'));
+>  RelativePath := not ((S <> '') and ((S[1] = '\') or (S[2] = ':')));
+#function NoWildChars(S: String): String; near; assembler;
+#end;
+>function NoWildChars(S: String): String;
+>begin
+>     asm
+>        MOV    ESI,S
+>        XOR    AX,AX
+>        LODSB
+>        XCHG   AX,CX
+>        MOVZX  ECX,CX
+>        MOV    EDI,Result
+>        INC    EDI
+>        CMP    ECX,0
+>        JE     !l3_1
+>!l1_1:
+>        LODSB
+>        CMP    AL,'?'
+>        JE     !l2_1
+>        CMP    AL,'*'
+>        JE     !l2_1
+>        STOSB
+>!l2_1:
+>        LOOP   !l1_1
+>!l3_1:
+>        XCHG   EAX,EDI
+>        MOV    EDI,Result
+>        SUB    EAX,EDI
+>        DEC    EAX
+>        STOSB
+>    end;
+>end;
+#function GetCurDrive: Char; near; assembler;
+#end;
+>function GetCurDrive: Char;
+>var
+>   DriveNumber,DriveMap:LongWord;
+>begin
+>     DosQueryCurrentDisk(DriveNumber,DriveMap);
+>     GetCurDrive := Chr(DriveNumber+Ord('A')-1);
+>end;
+#end.
+>begin
+>end.
+!EDITORS.PAS
+#{$I-,O+,F+,V-,X+,S-}
+>{$I-,S-}
+#  EditorDialog: TEditorDialog = DefEditorDialog;
+>  EditorDialog: TEditorDialog = @DefEditorDialog;
+#  REditor: TStreamRec = (
+#  );
+>  REditor: TStreamRec = (
+>    ObjType: 70;
+>    VmtLink: TypeOf(TEditor);
+>    Load: @TEditor.Load;
+>    Store: @TEditor.Store
+>  );
+#  RMemo: TStreamRec = (
+#  );
+>  RMemo: TStreamRec = (
+>    ObjType: 71;
+>    VmtLink: TypeOf(TMemo);
+>    Load: @TMemo.Load;
+>    Store: @TMemo.Store
+>  );
+#  RFileEditor: TStreamRec = (
+#  );
+>  RFileEditor: TStreamRec = (
+>    ObjType: 72;
+>    VmtLink: TypeOf(TFileEditor);
+>    Load: @TFileEditor.Load;
+>    Store: @TFileEditor.Store
+>  );
+#  RIndicator: TStreamRec = (
+#  );
+>  RIndicator: TStreamRec = (
+>    ObjType: 73;
+>    VmtLink: TypeOf(TIndicator);
+>    Load: @TIndicator.Load;
+>    Store: @TIndicator.Store
+>  );
+#  REditWindow: TStreamRec = (
+#  );
+>  REditWindow: TStreamRec = (
+>    ObjType: 74;
+>    VmtLink: TypeOf(TEditWindow);
+>    Load: @TEditWindow.Load;
+>    Store: @TEditWindow.Store
+>  );
+#function Min(X, Y: Integer): Integer; near; assembler;
+#end;
+>function Min(X, Y: Integer): Integer;
+>begin
+>     if X<Y then Min:=X
+>     else Min:=Y;
+>end;
+#function Max(X, Y: Integer): Integer; near; assembler;
+#end;
+>function Max(X, Y: Integer): Integer;
+>begin
+>     if X>Y then Max:=X
+>     else Max:=Y;
+>end;
+#function MinWord(X, Y: Word): Word; near; assembler;
+#end;
+>function MinWord(X, Y: Word): Word;
+>begin
+>     if X<Y then MinWord:=X
+>     else MinWord:=Y;
+>end;
+#function MaxWord(X, Y: Word): Word; near; assembler;
+#end;
+>function MaxWord(X, Y: Word): Word;
+>begin
+>     if X>Y then MaxWord:=X
+>     else MaxWord:=Y;
+>end;
+#function CountLines(var Buf; Count: Word): Integer; near; assembler;
+#end;
+>function CountLines(var Buf; Count: Word): Integer;
+>begin
+>     asm
+>        MOV     EDI,Buf
+>        MOVZXW  ECX,Count
+>        XOR     EDX,EDX
+>        MOV     AL,$0D
+>        CLD
+>!l1:
+>        CMP     ECX,0
+>        JE      !l2
+>        REPNE
+>        SCASB
+>        JNE     !l2
+>        INC     EDX
+>        JMP     !l1
+>!l2:
+>        MOV     Result,EDX
+>    end;
+>end;
+#function ScanKeyMap(KeyMap: Pointer; KeyCode: Word): Word; near; assembler;
+#end;
+>function ScanKeyMap(KeyMap: Pointer; KeyCode: Word): Word;
+>begin
+>     asm
+>        MOV     ESI,KeyMap
+>        MOV     DX,KeyCode
+>        CLD
+>        LODSW
+>        MOVZX   ECX,AX
+>!l1_1:
+>        LODSW
+>        MOV     BX,AX
+>        LODSW
+>        CMP     BL,DL
+>        JNE     !l3_1
+>        OR      BH,BH
+>        JE      !l4_1
+>        CMP     BH,DH
+>        JE      !l4_1
+>!l3_1:
+>        LOOP    !l1_1
+>        XOR     AX,AX
+>!l4_1:
+>        MOV     Result,AX
+>     end;
+>end;
+#function Scan(var Block; Size: Word; Str: String): Word; near; assembler;
+#end;
+>function Scan(var Block; Size: Word;CONST Str: String): Word;
+>begin
+>    asm
+>        MOV     EDI,Block
+>        MOV     ESI,Str
+>        MOVZXW  ECX,Size
+>        CMP     ECX,0
+>        JE      !l3_2
+>        CLD
+>        LODSB
+>        CMP     AL,1
+>        JB      !l5_2
+>        JA      !l1_2
+>        LODSB
+>        REPNE
+>        SCASB
+>        JNE     !l3_2
+>        JMP     !l5_2
+>!l1_2:
+>        XOR     AH,AH
+>        MOV     BX,AX
+>        DEC     BX
+>        MOV     DX,CX
+>        SUB     DX,AX
+>        JB      !l3_2
+>        LODSB
+>        INC     DX
+>        INC     DX
+>!l2_2:
+>        DEC     DX
+>        MOVZX   ECX,DX
+>        REPNE
+>        SCASB
+>        JNE     !l3_2
+>        MOV     DX,CX
+>        MOVZX   ECX,BX
+>        REP
+>        CMPSB
+>        JE      !l4_2
+>        SUB     CX,BX
+>        MOVZX   ECX,CX
+>        ADD     ESI,ECX
+>        ADD     EDI,ECX
+>        INC     EDI
+>        OR      DX,DX
+>        JNE     !l2_2
+>!l3_2:
+>        XOR     AX,AX
+>        JMP     !l6_2
+>!l4_2:
+>        MOVZX   EBX,BX
+>        SUB     EDI,EBX
+>!l5_2:
+>        MOV     EAX,EDI
+>        SUB     EAX,Block
+>!l6_2:
+>        DEC     EAX
+>        MOV     Result,EAX
+>    end;
+>end;
+#function IScan(var Block; Size: Word; Str: String): Word; near; assembler;
+#end;
+>function IScan(var Block; Size: Word;CONST Str: String): Word;
+>var
+>  S: String;
+>begin
+>     asm
+>        LEA     EDI,S
+>        MOV     ESI,Str
+>        XOR     AH,AH
+>        LODSB
+>        STOSB
+>        MOVZX   ECX,AX
+>        MOVZX   EBX,AX
+>        CMP     ECX,0
+>        JE      !l9_3
+>!l1_3:
+>        LODSB
+>        CMP     AL,'a'
+>        JB      !l2_3
+>        CMP     AL,'z'
+>        JA      !l2_3
+>        SUB     AL,$20
+>!l2_3:
+>        STOSB
+>        LOOP    !l1_3
+>        SUB     EDI,EBX
+>        MOV     ESI,Block
+>        MOVZXW  ECX,Size
+>        CMP     ECX,0
+>        JE      !l8_3
+>        CLD
+>        SUB     ECX,EBX
+>        JB      !l8_3
+>        INC     ECX
+>!l4_3:
+>        MOV     AH,[EDI]
+>        AND     AH,$DF
+>!l5_3:
+>        LODSB
+>        AND     AL,$DF
+>        CMP     AL,AH
+>        LOOPNE  !l5_3
+>        JNE     !l8_3
+>        DEC     ESI
+>        MOV     EDX,ECX
+>        MOV     ECX,EBX
+>!l6_3:
+>        REPE
+>        CMPSB
+>        JE      !l10_3
+>        MOV     AL,[ESI-1]
+>        CMP     AL,'a'
+>        JB      !l7_3
+>        CMP     AL,'z'
+>        JA      !l7_3
+>        SUB     AL,$20
+>!l7_3:
+>        CMP     AL,[EDI-1]
+>        JE      !l6_3
+>        SUB     ECX,EBX
+>        ADD     ESI,ECX
+>        ADD     EDI,ECX
+>        INC     ESI
+>        MOV     ECX,EDX
+>        OR      ECX,ECX
+>        JNE     !l4_3
+>!l8_3:
+>        XOR     AX,AX
+>        JMP     !l11_3
+>!l9_3:
+>        MOV     AX, 1
+>        JMP     !l11_3
+>!l10_3:
+>        SUB     ESI,EBX
+>        MOV     EAX,ESI
+>        SUB     EAX,Block
+>        INC     EAX
+>!l11_3:
+>        DEC     EAX
+>        MOV     Result,EAX
+>     end;
+>end;
+#procedure TIndicator.SetValue(ALocation: TPoint; AModified: Boolean);
+#end;
+>procedure TIndicator.SetValue(ALocation: TPoint; AModified: Boolean);
+>begin
+>  if (Longint(Location) <> Longint(ALocation)) or
+>    (Modified <> AModified) then
+>  begin
+>    Location := ALocation;
+>    Modified := AModified;
+>    DrawView;
+>  end;
+>end;
+#function TEditor.BufChar(P: Word): Char; assembler;
+#end;
+>function TEditor.BufChar(P: Word): Char;
+>begin
+>     asm
+>        MOV     EDI,Self
+>        MOV     BX,P
+>        CMP     BX,[EDI].TEditor.CurPtr
+>        JB      !l1_4
+>        ADD     BX,[EDI].TEditor.GapLen
+>!l1_4:
+>        MOVZX   EBX,BX
+>        MOV     EDI,[EDI].TEditor.Buffer
+>        MOV     AL,[EDI+EBX]
+>        MOV     Result,AL
+>     end;
+>end;
+#function TEditor.BufPtr(P: Word): Word; assembler;
+#end;
+>function TEditor.BufPtr(P: Word): Word;
+>begin
+>     asm
+>        MOV     EDI,Self
+>        MOV     AX,P
+>        CMP     AX,[EDI].TEditor.CurPtr
+>        JB      !l1_5
+>        ADD     AX,[EDI].TEditor.GapLen
+>!l1_5:
+>        MOV     Result,AX
+>     end;
+>end;
+#  ShiftState: Byte absolute $40:$17;
+>
+#procedure TEditor.FormatLine(var DrawBuf; LinePtr: Word;
+#end;
+>
+>var Help10Adr:POINTER;
+>
+>procedure TEditor.FormatLine(var DrawBuf; LinePtr: Word;
+>  Width: Integer; Colors: Word);
+>begin
+>     asm
+>        MOV     EAX,*!l10_6
+>        MOV     Editors.Help10Adr,EAX
+>        MOV     EBX,Self
+>        MOV     EDI,DrawBuf
+>        MOVZXW  ESI,LinePtr
+>        XOR     EDX,EDX
+>        CLD
+>        MOV     AH,Colors
+>        MOVZXW  ECX,[EBX].TEditor.SelStart
+>        CALLN32 [Editors.Help10Adr]
+>        MOV     AH,Colors+1
+>        MOVZXW  ECX,[EBX].TEditor.CurPtr
+>        CALLN32 [Editors.Help10Adr]
+>        MOVZXW  ECX,[EBX].TEditor.GapLen
+>        ADD     ESI,ECX
+>        MOVZXW  ECX,[EBX].TEditor.SelEnd
+>        ADD     CX,[EBX].TEditor.GapLen
+>        CALLN32 [Editors.Help10Adr]
+>        MOV     AH,Colors
+>        MOVZXW  ECX,[EBX].TEditor.BufSize
+>        CALLN32 [Editors.Help10Adr]
+>        JMP     !l31_6
+>!l10_6:
+>        SUB     ECX,ESI
+>        JA      !l11_6
+>        RETN32
+>!l11_6:
+>        MOV     EBX,[EBX].TEditor.Buffer
+>        ADD     ESI,EBX
+>        MOVZXW  EBX,Width
+>!l12_6:
+>        LODSB
+>        CMP     AL,' '
+>        JB      !l20_6
+>!l13_6:
+>        STOSW
+>        INC     EDX
+>!l14_6:
+>        CMP     EDX,EBX
+>        JAE     !l30_6
+>        LOOP    !l12_6
+>        MOV     EBX,Self
+>        SUB     ESI,[EBX].TEditor.Buffer
+>        RETN32
+>!l20_6:
+>        CMP     AL,$0D
+>        JE      !l30_6
+>        CMP     AL,$09
+>        JNE     !l13_6
+>        MOV     AL,' '
+>!l21_6:
+>        STOSW
+>        INC     EDX
+>        TEST    DL,7
+>        JNE     !l21_6
+>        JMP     !l14_6
+>!l30_6:
+>        POP     ECX
+>!l31_6:
+>        MOV     AL,' '
+>        MOVZXW  ECX,Width
+>        SUB     ECX,EDX
+>        JBE     !l32_6
+>        REP
+>        STOSW
+>!l32_6:
+>    end;
+>end;
+#  ShiftState: Byte absolute $40:$17;
+>
+#function TEditor.LineEnd(P: Word): Word; assembler;
+#end;
+>function TEditor.LineEnd(P: Word): Word;
+>begin
+>     asm
+>        MOV     ESI,Self
+>        MOV     EBX,[ESI].TEditor.Buffer
+>        MOVZXW  EDI,P
+>        MOV     AL,$0D
+>        CLD
+>        MOVZXW  ECX,[ESI].TEditor.CurPtr
+>        SUB     ECX,EDI
+>        JBE     !l1_7
+>        ADD     EDI,EBX
+>        REPNE
+>        SCASB
+>        JE      !l2_7
+>        MOVZXW  EDI,[ESI].TEditor.CurPtr
+>!l1_7:
+>        MOVZXW  ECX,[ESI].TEditor.BufLen
+>        SUB     ECX,EDI
+>        CMP     ECX,0
+>        JE      !l4_7
+>        MOVZXW  EDX,[ESI].TEditor.GapLen
+>        ADD     EBX,EDX
+>        ADD     EDI,EBX
+>        REPNE
+>        SCASB
+>        JNE     !l3_7
+>!l2_7:
+>        DEC     EDI
+>!l3_7:
+>        SUB     EDI,EBX
+>!l4_7:
+>        MOV     Result,EDI
+>     end;
+>end;
+#function TEditor.LineStart(P: Word): Word; assembler;
+#end;
+>function TEditor.LineStart(P: Word): Word;
+>begin
+>     asm
+>        MOV     ESI,Self
+>        MOV     EBX,[ESI].TEditor.Buffer
+>        MOVZXW  EDI,P
+>        MOV     AL,$0D
+>        STD
+>        MOV     ECX,EDI
+>        MOVZXW  EDX,[ESI].TEditor.CurPtr
+>        SUB     ECX,EDX
+>        JBE     !l1_8
+>        MOVZXW  EDX,[ESI].TEditor.GapLen
+>        ADD     EBX,EDX
+>        ADD     EDI,EBX
+>        DEC     EDI
+>        REPNE
+>        SCASB
+>        JE      !l2_8
+>        MOVZXW  EDX,[ESI].TEditor.GapLen
+>        SUB     EBX,EDX
+>        MOVZXW  EDI,[ESI].TEditor.CurPtr
+>!l1_8:
+>        MOV     ECX,EDI
+>        CMP     ECX,0
+>        JE      !l4_8
+>        ADD     EDI,EBX
+>        DEC     EDI
+>        REPNE
+>        SCASB
+>        JNE     !l3_8
+>!l2_8:
+>        INC     EDI
+>        INC     EDI
+>        SUB     EDI,EBX
+>        CMP     DI,[ESI].TEditor.CurPtr
+>        JE      !l4_8
+>        CMP     DI,[ESI].TEditor.BufLen
+>        JE      !l4_8
+>        CMPB    [EBX+EDI],$0A
+>        JNE     !l4_8
+>        INC     EDI
+>        JMP     !l4_8
+>!l3_8:
+>        XOR     EDI,EDI
+>!l4_8:
+>        MOV     Result,EDI
+>     end;
+>end;
+#function TEditor.NextChar(P: Word): Word; assembler;
+#end;
+>function TEditor.NextChar(P: Word): Word;
+>begin
+>     asm
+>        MOV     ESI,Self
+>        MOVZXW  EDI,P
+>        CMP     DI,[ESI].TEditor.BufLen
+>        JE      !l2_9
+>        INC     EDI
+>        CMP     DI,[ESI].TEditor.BufLen
+>        JE      !l2_9
+>        MOV     EBX,[ESI].TEditor.Buffer
+>        CMP     DI,[ESI].TEditor.CurPtr
+>        JB      !l1_9
+>        MOVZXW  EDX,[ESI].TEditor.GapLen
+>        ADD     EBX,EDX
+>!l1_9:
+>        DEC     EBX
+>        CMPW    [EBX+EDI],$0A0D
+>        JNE     !l2_9
+>        INC     EDI
+>!l2_9:
+>        MOV     Result,EDI
+>     end;
+>end;
+#function TEditor.PrevChar(P: Word): Word; assembler;
+#end;
+>function TEditor.PrevChar(P: Word): Word;
+>begin
+>    asm
+>        MOV     ESI,Self
+>        MOVZXW  EDI,P
+>        OR      EDI,EDI
+>        JE      !l2_10
+>        DEC     EDI
+>        JE      !l2_10
+>        MOV     EBX,[ESI].TEditor.Buffer
+>        CMP     DI,[ESI].TEditor.CurPtr
+>        JB      !l1_10
+>        MOVZXW  EDX,[ESI].TEditor.GapLen
+>        ADD     EBX,EDX
+>!l1_10:
+>        DEC     EBX
+>        CMPW    [EBX+EDI],$0A0D
+>        JNE     !l2_10
+>        DEC     EDI
+>!l2_10:
+>        MOV     Result,EDI
+>     end;
+>end;
+#function TFileEditor.SetBufSize(NewSize: Word): Boolean;
+#end;
+>function TFileEditor.SetBufSize(NewSize: Word): Boolean;
+>var
+>  N: Word;
+>  P: Pointer;
+>begin
+>  SetBufSize := False;
+>  if NewSize = 0 then NewSize := $1000 else
+>    if NewSize > $F000 then NewSize := $FFF0 else
+>      NewSize := (NewSize + $0FFF) and $F000;
+>  if NewSize <> BufSize then
+>  begin
+>    if NewSize > BufSize then
+>    begin
+>         NewBuffer(P,NewSize);
+>         move(Buffer^,P^,BufSize);
+>         DisposeBuffer(Buffer);
+>         Buffer:=P;
+>    end;
+>    N := BufLen - CurPtr + DelCount;
+>    Move(Buffer^[BufSize - N], Buffer^[NewSize - N], N);
+>    if NewSize < BufSize then
+>    begin
+>         NewBuffer(P,NewSize);
+>         move(Buffer^,P^,NewSize);
+>         DisposeBuffer(Buffer);
+>         Buffer:=P;
+>    end;
+>    BufSize := NewSize;
+>    GapLen := BufSize - BufLen;
+>  end;
+>  SetBufSize := True;
+>end;
+#end.
+>begin
+>end.
+!COLORSEL.PAS
+#{$O+,F+,X+,I-,S-}
+>{$I-,S-}
+#  RColorSelector: TStreamRec = (
+#  );
+>  RColorSelector: TStreamRec = (
+>     ObjType: 21;
+>     VmtLink: TypeOf(TColorSelector);
+>     Load:    @TColorSelector.Load;
+>     Store:   @TColorSelector.Store
+>  );
+#  RMonoSelector: TStreamRec = (
+#  );
+>  RMonoSelector: TStreamRec = (
+>     ObjType: 22;
+>     VmtLink: TypeOf(TMonoSelector);
+>     Load:    @TMonoSelector.Load;
+>     Store:   @TMonoSelector.Store
+>  );
+#  RColorDisplay: TStreamRec = (
+#  );
+>  RColorDisplay: TStreamRec = (
+>     ObjType: 23;
+>     VmtLink: TypeOf(TColorDisplay);
+>     Load:    @TColorDisplay.Load;
+>     Store:   @TColorDisplay.Store
+>  );
+#  RColorGroupList: TStreamRec = (
+#  );
+>  RColorGroupList: TStreamRec = (
+>     ObjType: 24;
+>     VmtLink: TypeOf(TColorGroupList);
+>     Load:    @TColorGroupList.Load;
+>     Store:   @TColorGroupList.Store
+>  );
+#  RColorItemList: TStreamRec = (
+#  );
+>  RColorItemList: TStreamRec = (
+>     ObjType: 25;
+>     VmtLink: TypeOf(TColorItemList);
+>     Load:    @TColorItemList.Load;
+>     Store:   @TColorItemList.Store
+>  );
+#  RColorDialog: TStreamRec = (
+#  );
+>  RColorDialog: TStreamRec = (
+>     ObjType: 26;
+>     VmtLink: TypeOf(TColorDialog);
+>     Load:    @TColorDialog.Load;
+>     Store:   @TColorDialog.Store
+>  );
+#end.
+>begin
+>end.
+!OUTLINE.PAS
+#{$O+,F+,X+,I-,S-,R-}
+>{$I-,S-,R-}
+#    function Iterate(Action: Pointer; CallerFrame: Word;
+#      CheckRslt: Boolean): Pointer;
+>    function Iterate(Action: Pointer; CallerFrame: LongWord;
+>      CheckRslt: Boolean): Pointer;
+#  ROutline: TStreamRec = (
+#  );
+>  ROutline: TStreamRec = (
+>     ObjType: 91;
+>     VmtLink: TypeOf(TOutline);
+>     Load:    @TOutline.Load;
+>     Store:   @TOutline.Store
+>  );
+#function TOutlineViewer.CreateGraph(Level: Integer; Lines: LongInt;
+#end;
+>function TOutlineViewer.CreateGraph(Level: Integer; Lines: LongInt;
+>         Flags: Word; LevWidth, EndWidth: Integer;
+>         const Chars: String): String;
+>const
+>  FillerOrBar   = 0;
+>  YorL          = 2;
+>  StraightOrTee = 4;
+>  Retracted     = 6;
+>var
+>  Last, Children, Expanded: Boolean;
+>begin
+>     asm
+>        CLD
+>
+>        { Break out flags }
+>        XOR     BX,BX
+>        MOV     AX,Flags
+>        MOV     Expanded,BL
+>        SHR     AX,1
+>        ADC     Expanded,BL
+>        MOV     Children,BL
+>        SHR     AX,1
+>        ADC     Children,BL
+>        MOV     Last,BL
+>        SHR     AX,1
+>        ADC     Last,BL
+>
+>        { Load registers }
+>        MOV     ESI,Chars
+>        INC     ESI
+>        MOV     EDI,Result
+>        INC     EDI
+>        MOV     AX,Lines
+>        MOV     DX,Lines+2
+>        INCW    Level
+>
+>        { Write bar characters }
+>        JMP     !l2
+>!l1:    XOR     BX,BX
+>        SHR     DX,1
+>        RCR     AX,1
+>        RCL     BX,1
+>        PUSH    AX
+>        MOVZX   EBX,BX
+>        PUSH    EBX
+>        ADD     EBX,FillerOrBar
+>        MOV     AL,[ESI+EBX]
+>        POP     EBX
+>        STOSB
+>        PUSH    ESI
+>        ADD     ESI,FillerOrBar
+>        MOV     AL,[ESI]
+>        POP     ESI
+>        MOV     CX,LevWidth
+>        DEC     CX
+>        MOVZX   ECX,CX
+>        REP
+>        STOSB
+>        POP     AX
+>!l2:
+>        DECW    Level
+>        JNZ     !l1
+>
+>        { Write end characters }
+>        MOV     BH,0
+>        MOV     CX,EndWidth
+>        DEC     CX
+>        JZ      !l4
+>        MOV     BL,Last
+>        MOVZX   EBX,BX
+>        PUSH    EBX
+>        ADD     EBX,YorL
+>        MOV     AL,[ESI+EBX]
+>        POP     EBX
+>        STOSB
+>        DEC     CX
+>        JZ      !l4
+>        DEC     CX
+>        JZ      !l3
+>        PUSH    ESI
+>        ADD     ESI,StraightOrTee
+>        MOV     AL,[ESI]
+>        POP     ESI
+>        MOVZX   ECX,CX
+>        REP
+>        STOSB
+>!l3:
+>        MOV     BL,Children
+>        MOVZX   EBX,BX
+>        PUSH    EBX
+>        ADD     EBX,StraightOrTee
+>        MOV     AL,[ESI+EBX]
+>        POP     EBX
+>        STOSB
+>!l4:
+>        MOV     BL,Expanded
+>        MOVZX   EBX,BX
+>        PUSH    EBX
+>        ADD     EBX,Retracted
+>        MOV     AL,[ESI+EBX]
+>        POP     EBX
+>        STOSB
+>        MOV     EAX,EDI
+>        MOV     EDI,Result
+>        SUB     EAX,EDI
+>        DEC     EAX
+>        STOSB
+>     end;
+>end;
+#function CallerFrame: Word; inline(
+#);
+>
+#function TOutlineViewer.FirstThat(Test: Pointer): Pointer;
+#end;
+>function TOutlineViewer.FirstThat(Test: Pointer): Pointer;
+>VAR cfr:LONGWORD;
+>begin
+>  ASM
+>     //determine caller's frame
+>     MOV EAX,[EBP]
+>     MOV cfr,EAX
+>  END;
+>  FirstThat := Iterate(Test, cfr, True);
+>end;
+#function TOutlineViewer.ForEach(Action: Pointer): Pointer;
+#end;
+>function TOutlineViewer.ForEach(Action: Pointer): Pointer;
+>var cfr:LONGWORD;
+>begin
+>  ASM
+>     //determine caller's frame
+>     MOV EAX,[EBP]
+>     MOV cfr,EAX
+>  END;
+>  Iterate(Action, cfr, False);
+>end;
+#function TOutlineViewer.Iterate(Action: Pointer; CallerFrame: Word;
+#end;
+>function TOutlineViewer.Iterate(Action: Pointer; CallerFrame: LongWord;
+>                                CheckRslt: Boolean): Pointer;
+>var
+>  Position: Integer;
+>
+>  function TraverseTree(Cur: Pointer; Level: Integer;
+>    Lines: LongInt; LastChild: Boolean): Pointer; far;
+>  label
+>    Retn;
+>  var
+>    J, ChildCount: Integer;
+>    Ret: Pointer;
+>    Flags: Word;
+>    Children: Boolean;
+>    ok:BOOLEAN;
+>    p:FUNCTION(Cur:POINTER;Level:INTEGER;Pos:INTEGER;Lines:LONGINT;
+>               Flags:WORD;CallerFrame:LONGWORD):BOOLEAN;
+>  begin
+>    TraverseTree := Cur;
+>    if Cur = nil then Exit;
+>
+>    Children := HasChildren(Cur);
+>
+>    Flags := 0;
+>    if LastChild then Inc(Flags, ovLast);
+>    if Children and IsExpanded(Cur) then Inc(Flags, ovChildren);
+>    if not Children or IsExpanded(Cur) then Inc(Flags, ovExpanded);
+>
+>    Inc(Position);
+>
+>    { Perform call }
+>    p:=Action;
+>    ok:=p(Cur,Level,Position,Lines,Flags,CallerFrame);
+>    ok:=ok AND CheckRslt;
+>    IF ok then goto Retn;
+>
+>    if Children and IsExpanded(Cur) then
+>    begin
+>      ChildCount := GetNumChildren(Cur);
+>
+>      if not LastChild then Lines := Lines or (1 shl Level);
+>      for J := 0 to ChildCount - 1 do
+>      begin
+>        Ret := TraverseTree(GetChild(Cur, J), Level + 1, Lines,
+>          J = (ChildCount - 1));
+>        TraverseTree := Ret;
+>        if Ret <> nil then Exit;
+>      end;
+>    end;
+>    TraverseTree := nil;
+>  Retn:
+>  end;
+>
+>begin  //Iterate
+>  Position := -1;
+>
+>  asm                           { Convert 0, 1 to 0, FF }
+>     DECB    CheckRslt
+>     NOTB    CheckRslt
+>  end;
+>
+>  Iterate := TraverseTree(GetRoot, 0, 0, True);
+>end;
+#end.
+>begin
+>end.
+!BUILDTV.PAS
+#  TextView,
+>  {TextView,}
+#begin
+#end.
+>begin
+>end.
+!MSGBOX.PAS
+#{$O+,F+,X+,I-,S-}
+>{$I-,S-}
+#end.
+>begin
+>end.
+!!

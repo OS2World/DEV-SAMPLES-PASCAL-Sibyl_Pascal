@@ -1,0 +1,65 @@
+How SIbyl handles libraries
+
+- Because it must run the components at design time 
+they must be compiled into (by default) complib.dll which has a
+standardised interface.
+
+- A new component library DLL can be made with New... - component
+library
+  The source code for a component libary is put in a .SCL file but its
+the same as a .PAS
+
+- Registered classes are defined ONLY in the selected COMPLIB.DLL 
+
+- Rebuild library rebuilds the classes registered by the current DLL
+  If the SPUs no longer exist in the place they were installed from,
+then they are recompiled (but to the output directory) from the source
+(probably assumed to be in the same place as the SPU).
+  In other words rebuilding the library does not necessarily help you
+if you've changed the source for the component.
+
+- Compilation only uses the SPU (precompiled units) in sibyl\lib
+(or the project output directory)
+
+- Hence command line compilation does not care about complib.dll
+
+- Installing a new component makes Sibyl 
+  - recreates the .SCL file and adds a registerclasses entry for the
+new component
+  - recreates the .NAV file
+  - rebuild the complib.dll incorporating the SPU
+it doesn't do anything with the SPU itself
+
+- Each project can refer to a different Component library; this is
+relevant only for designing. It is defined thru COmponent - Open
+Library.
+
+- Note: dependencies as recorded in the Sibyl Project file seem to be
+irrelevant. The compiler figures out what it needs to compile based on
+what is USEd in the source
+
+- Note: compiling library: no single library file uses all the units
+in the SPCC library. Hence make an .SCL that uses all of them
+
+- Seems to be some difference between command line compiler & REBUILD
+LIBRARY after FP3.
+
+- Library source directories seem to be irrelevant to anything
+
+- 'Writing EXE' may mean writing DLL...
+
+Hence a methodology for version controlling Sibyl libraries:
+
+
+P:\Sibyl\version\lib : SPU files
+P:\Sibyl\version\bin : COMPLIB.DLL 
+p:\Sibyl\version\source : source files
+
+
+So long as the correct DLL is precompiled and opened by the project,
+components will not have to be manually installed!
+
+- Limitation:
+  We will have to have only one Sibyl library since multiple component
+libraries cannot be installed. This does not affect 
+

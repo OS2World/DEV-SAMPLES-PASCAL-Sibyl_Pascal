@@ -1,0 +1,49 @@
+New features
+
+  Code completion - how?! ??
+  No class completion
+
+
+Changes
+
+
+Menus moved to menus.pas
+
+psInsideFrame changed to psAlternate
+
+TControl.Scroll now passes sender as TScrollBar not TObject
+
+TBrushStyle and TPenStyle moved to graphics.pasStandardMnemoChar
+
+Clipboard functions moved to clipbrd.pas
+  And changed, now use SetTextBuf or AsText property...
+
+Message definitions moved to messages.pas
+
+
+Changes to mnemonic handling... ReplaceMnemo function changed to ConvertSystemMnemo
+
+Fixes
+
+ Local variables works properly.
+
+ Nonvisual components that are off screen,when selected from list in object inspector,
+ are moved onscreen
+
+ Seem to be able to set applicationfont now
+
+ Gradient title bars
+ 
+ Coolbar slightly "improved" ... when pushing...
+
+Not fixed
+
+ Large arrays still lock up debugger variable display 
+ Various things with coolbar
+ Last 'edit' item in object inspector remains 
+ Pasted controls always get 1 appened to name.
+ Splash screen still goes behind everything 
+ Still asks if you want to save initial, blank project
+ Menu editor still messy. Can't double click items. Inserting is messy.
+
+ Cannot put multipl aligned controls along an edge

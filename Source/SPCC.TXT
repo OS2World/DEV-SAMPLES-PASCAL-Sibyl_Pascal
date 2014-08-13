@@ -1,0 +1,10 @@
+THings to do to the SPCC
+
+* Private -> protected
+* Bitmap button better disable picture
+* Hints can show up for disabled controls ( maybe OS/2 limitation ? )
+* TRadioGroup button problem
+* Popup index for listbox and outline
+* Directory outline enhancements
+* (Maybe) directory edit
+* 
