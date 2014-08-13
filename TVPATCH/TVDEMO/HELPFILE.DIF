@@ -1,0 +1,39 @@
+{Please replace the following two procedures in HELPFILE.PAS when
+ compiling the TVDEMO application}
+
+function Scan(var P; Offset, Size: Integer; C: Char): Integer; assembler;
+asm
+        CLD
+        MOV     EDI,$P
+        MOVSXW  EAX,$Offset
+        ADD     EDI,EAX
+        MOVSXW  EDX,$Size
+        SUB     EDX,EAX
+        OR      DH,DH
+        JZ      !1
+        MOV     EDX,256
+!1:     MOV     ECX,EDX
+        MOV     AL,$C
+        REPNE
+        SCASB
+        SUB     ECX,EDX
+        NEG     ECX
+        XCHG    EAX,ECX
+end;
+
+procedure TextToLine(var Text; Offset, Length: Integer; var Line: String);
+  assembler;
+asm
+        CLD
+        MOV     ESI,$Text
+        MOVSXW  EAX,$Offset
+        ADD     ESI,EAX
+        MOV     EDI,$Line
+        MOV     AX,$Length
+        STOSB
+        XCHG    AX,CX
+        MOVZX   ECX,CX
+        REP
+        MOVSB
+end;
+
